@@ -33,11 +33,22 @@ function injectVrcButton() {
     btn.className = "ytp-button vrc-player-button";
     btn.setAttribute("aria-label", "VRChat リンク変換 (4K/1080p)");
     btn.setAttribute("title", "VRChat リンク変換 (4K/1080p)");
-    // 内部の文字も含めて全体を鮮やかなブルー (シアンブルー) に配色
+    // VRChat公式のフキダシ形状ロゴ (内部をホワイトから鮮やかなブルーにした特製バージョン)
     btn.innerHTML = `
-      <svg viewBox="0 0 36 36" width="100%" height="100%">
-        <rect x="3" y="9.5" width="30" height="17" rx="5" fill="rgba(14, 165, 233, 0.22)" stroke="#0ea5e9" stroke-width="1.8"/>
-        <text x="18" y="21.8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="900" fill="#38bdf8" text-anchor="middle" letter-spacing="0.5">VRC</text>
+      <svg height="100%" version="1.1" viewBox="0 0 36 36" width="100%">
+        <path d="M 8.5 10 L 27.5 10 A 3 3 0 0 1 30.5 13 L 30.5 20.5 A 3 3 0 0 1 27.5 23.5 L 26 23.5 L 28.2 27.5 L 22.5 23.5 L 8.5 23.5 A 3 3 0 0 1 5.5 20.5 L 5.5 13 A 3 3 0 0 1 8.5 10 Z" 
+              fill="#0284c7" 
+              stroke="#000000" 
+              stroke-width="1.8" 
+              stroke-linejoin="round"
+              style="filter: drop-shadow(0.8px 1.2px 0px #000000);" />
+        <text x="17.2" y="19.5" 
+              font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" 
+              font-size="8.8" 
+              font-weight="900" 
+              fill="#ffffff" 
+              text-anchor="middle" 
+              letter-spacing="0.4">VRC</text>
       </svg>
     `;
 

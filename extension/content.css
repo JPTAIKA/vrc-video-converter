@@ -1,54 +1,41 @@
 /* VRChat Player Button & In-Player Popup Styles */
 
-/* 1. YouTube 再生バー上のVRCアイコンボタン */
+/* 1. YouTube 再生バー上のVRCアイコンボタン (YouTube純正ボタンと完全に同じ高さ・基準線で整列) */
 .vrc-player-button {
   cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 100%;
   padding: 0;
   border: none;
   background: transparent;
   outline: none;
+  width: 48px;
+  height: 100%;
+  text-align: center;
   vertical-align: top;
-  transition: transform 0.15s ease, opacity 0.15s ease;
+  display: inline-block;
+  opacity: 0.9;
+  transition: opacity 0.15s ease;
   user-select: none;
+  position: relative;
 }
 
 .vrc-player-button:hover {
   opacity: 1 !important;
-  transform: scale(1.08);
 }
 
 .vrc-player-button svg {
-  width: 32px;
-  height: 32px;
-  filter: drop-shadow(0 0 3px rgba(14, 165, 233, 0.4));
-  transition: filter 0.2s ease;
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
-.vrc-player-button svg text {
-  fill: #38bdf8;
-  transition: fill 0.2s ease;
+.vrc-player-button svg path {
+  transition: fill 0.15s ease, filter 0.15s ease;
 }
 
-.vrc-player-button svg rect {
-  transition: stroke 0.2s ease, fill 0.2s ease;
-}
-
-.vrc-player-button:hover svg {
-  filter: drop-shadow(0 0 8px rgba(14, 165, 233, 0.8));
-}
-
-.vrc-player-button:hover svg text {
-  fill: #00e5ff;
-}
-
-.vrc-player-button:hover svg rect {
-  stroke: #00e5ff;
-  fill: rgba(0, 229, 255, 0.3);
+.vrc-player-button:hover svg path {
+  fill: #0ea5e9;
+  filter: drop-shadow(0.8px 1.2px 0px #000000) drop-shadow(0 0 6px rgba(14, 165, 233, 0.8));
 }
 
 /* 2. 動画プレイヤー上のポップアップパネル */
