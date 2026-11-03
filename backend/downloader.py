@@ -29,7 +29,7 @@ def get_quick_stream_info(canonical_url: str) -> dict:
                 'player_client': ['visionos', 'android_vr']
             }
         },
-        'format': 'best[ext=mp4]/22/18/best', # 720p以下の映像+音声が結合済みの直リンク優先
+        'format': 'best[ext=mp4][vcodec^=avc1]/best[ext=mp4]/22/18/best', # H.264直リンク優先
         'noplaylist': True,
         'quiet': True,
         'no_warnings': True,
@@ -105,10 +105,14 @@ async def download_high_quality(canonical_url: str, video_id: str) -> dict:
                     'player_client': ['visionos', 'android_vr']
                 }
             },
-            # 1080p以下で最良の映像 + 最良の音声をダウンロードしてMP4に多重化
-            'format': 'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best[height<=1080]/best',
+            # VRChatプレイヤー (AVPro / Unity Video) 互換性のため H.264 (avc1) + AAC (mp4a) を最優先
+            'format': 'bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[height<=1080][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best',
             'merge_output_format': 'mp4',
             'outtmpl': output_template,
+            'postprocessor_args': {
+                # moov atomを先頭に配置（faststart）し、VRChatで即時ストリーミング再生を開始可能にする
+                'ffmpeg': ['-movflags', '+faststart']
+            },
             'noplaylist': True,
             'quiet': True,
             'no_warnings': True,
@@ -117,7 +121,6 @@ async def download_high_quality(canonical_url: str, video_id: str) -> dict:
 
         if os.path.exists(settings.COOKIES_FILE):
             ydl_opts['cookiefile'] = settings.COOKIES_FILE
-            ydl_opts.pop('extractor_args', None)
 
         # 非同期ループをブロックしないよう別スレッドで実行
         loop = asyncio.get_running_loop()

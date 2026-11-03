@@ -73,7 +73,7 @@ class ConvertRequest(BaseModel):
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "vrc-video-converter", "version": "1.0.5"}
+    return {"status": "ok", "service": "vrc-video-converter", "version": "1.0.6"}
 
 @app.get("/api/test_clients")
 def test_clients(v: str = "OWDcn7hl16A"):
@@ -196,6 +196,7 @@ async def stream_video(file_id: str, request: Request):
             "Accept-Ranges": "bytes",
             "Content-Length": str(content_length),
             "Content-Type": "video/mp4",
+            "Access-Control-Allow-Origin": "*",
             "Cache-Control": "public, max-age=3600"
         }
         return StreamingResponse(iterfile(), status_code=206, headers=headers)
@@ -211,6 +212,7 @@ async def stream_video(file_id: str, request: Request):
         "Accept-Ranges": "bytes",
         "Content-Length": str(file_size),
         "Content-Type": "video/mp4",
+        "Access-Control-Allow-Origin": "*",
         "Cache-Control": "public, max-age=3600"
     }
     return StreamingResponse(iter_full(), status_code=200, headers=headers)
