@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VRChat 動画リンク変換</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- ヘッダー -->
+    <header class="header">
+      <div class="logo-area">
+        <span class="logo-badge">VRC</span>
+        <h1>動画リンク変換</h1>
+      </div>
+      <button id="btnOptions" class="icon-button" title="設定を開く" aria-label="設定">
+        ⚙️
+      </button>
+    </header>
+
+    <!-- YouTube動画検出エリア -->
+    <section id="videoInfoSection" class="card video-card">
+      <div id="notYoutubeAlert" class="alert-box warning hidden">
+        YouTubeの動画ページ（watchまたはshorts）を開いて実行してください。
+      </div>
+
+      <div id="youtubeActiveBox">
+        <p class="section-label">現在の動画</p>
+        <div class="video-meta">
+          <div class="title-wrap">
+            <span id="videoTitle" class="video-title">読み込み中...</span>
+          </div>
+          <span id="videoUrl" class="video-url"></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- アクションボタンエリア -->
+    <section id="actionSection" class="action-grid">
+      <!-- 通常モード -->
+      <button id="btnQuickConvert" class="btn btn-secondary">
+        <div class="btn-icon">⚡</div>
+        <div class="btn-text">
+          <span class="btn-title">通常変換 (<=720p)</span>
+          <span class="btn-desc">即時取得・YouTube拒否回避</span>
+        </div>
+      </button>
+
+      <!-- 高画質モード -->
+      <button id="btnHqConvert" class="btn btn-primary">
+        <div class="btn-icon">🚀</div>
+        <div class="btn-text">
+          <span class="btn-title">高画質変換 (1080p)</span>
+          <span class="btn-desc">音声+映像結合・サーバー経由</span>
+        </div>
+      </button>
+    </section>
+
+    <!-- 処理中ステータス -->
+    <div id="loadingBox" class="card status-card hidden">
+      <div class="spinner"></div>
+      <p id="loadingText" class="status-text">変換処理中... 少々お待ちください</p>
+      <span class="status-subtext">※高画質モードはサーバーで多重化するため10〜30秒ほどかかります</span>
+    </div>
+
+    <!-- 結果表示エリア -->
+    <div id="resultBox" class="card result-card hidden">
+      <div class="result-header">
+        <span class="badge success-badge">✓ コピー完了</span>
+        <span id="resultQuality" class="quality-label"></span>
+      </div>
+      <p class="copy-notice">VRChat内のプレイヤーに直接ペーストできます！</p>
+      
+      <div class="url-copy-box">
+        <input type="text" id="resultUrlInput" readonly>
+        <button id="btnManualCopy" class="btn-copy-small" title="再コピー">コピー</button>
+      </div>
+
+      <div id="resultMeta" class="result-meta-note"></div>
+    </div>
+
+    <!-- エラー表示エリア -->
+    <div id="errorBox" class="card error-card hidden">
+      <div class="error-header">⚠️ エラーが発生しました</div>
+      <p id="errorMessage" class="error-text"></p>
+    </div>
+
+    <!-- フッター -->
+    <footer class="footer">
+      <span id="serverStatusText">サーバー: 未確認</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

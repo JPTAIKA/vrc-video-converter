@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VRChat 動画リンク変換 - オプション設定</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <h1>⚙️ 変換サーバー設定</h1>
+      <p class="subtitle">動画の多重化・ストリーム変換を行うバックエンドサーバーのアドレスを設定します。</p>
+    </header>
+
+    <div class="card">
+      <div class="form-group">
+        <label for="serverUrlInput">バックエンドAPI URL</label>
+        <div class="input-with-button">
+          <input type="url" id="serverUrlInput" placeholder="https://your-service.onrender.com または http://localhost:8000" spellcheck="false">
+          <button id="btnTest" class="btn btn-secondary">接続テスト</button>
+        </div>
+        <p class="hint">無料サーバー（Render, Fly.io, Railway等）またはご自身のVPS・ローカルサーバーのURLを指定してください。</p>
+      </div>
+
+      <div id="testStatus" class="test-status hidden"></div>
+
+      <div class="actions">
+        <button id="btnSave" class="btn btn-primary">設定を保存</button>
+        <span id="saveMessage" class="save-msg hidden">保存しました！</span>
+      </div>
+    </div>
+
+    <div class="card info-card">
+      <h2>🔒 セキュリティとプライバシーについて</h2>
+      <ul>
+        <li>本拡張機能は、閲覧中のYouTube動画のURLのみを変換処理のために指定サーバーへ送信します。</li>
+        <li>Cookieやログイン情報、個人データを送信・収集することはありません。</li>
+        <li>高画質モードで生成された一時ファイルは、サーバー側で設定された有効期限（通常1時間）後に自動削除されます。</li>
+      </ul>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
