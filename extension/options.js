@@ -1,4 +1,4 @@
-const DEFAULT_SERVER_URL = "http://localhost:8000";
+const DEFAULT_SERVER_URL = "https://vrc-video-converter.onrender.com";
 
 const elements = {
   serverUrlInput: document.getElementById("serverUrlInput"),

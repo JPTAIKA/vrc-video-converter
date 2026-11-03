@@ -5,6 +5,7 @@
   "description": "YouTubeのURLをVRChatで安定再生できる高画質(1080p)または軽量直リンクに変換し、ワンクリックでコピーします。",
   "permissions": [
     "activeTab",
+    "scripting",
     "storage",
     "clipboardWrite"
   ],
