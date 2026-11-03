@@ -23,6 +23,11 @@ def get_quick_stream_info(canonical_url: str) -> dict:
     （サーバー負荷・ディスク消費ほぼゼロ、即時返却）
     """
     ydl_opts = {
+        'extractor_args': {
+            'youtube': {
+                'player_client': ['visionos', 'android_vr', 'web']
+            }
+        },
         'format': 'best[ext=mp4]/22/18/best', # 720p以下の映像+音声が結合済みの直リンク優先
         'noplaylist': True,
         'quiet': True,
@@ -89,6 +94,11 @@ async def download_high_quality(canonical_url: str, video_id: str) -> dict:
         output_template = os.path.join(settings.CACHE_DIR, f"{file_id}.%(ext)s")
 
         ydl_opts = {
+            'extractor_args': {
+                'youtube': {
+                    'player_client': ['visionos', 'android_vr', 'web']
+                }
+            },
             # 1080p以下で最良の映像 + 最良の音声をダウンロードしてMP4に多重化
             'format': 'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best[height<=1080]/best',
             'merge_output_format': 'mp4',
