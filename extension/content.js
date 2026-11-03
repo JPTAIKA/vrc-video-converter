@@ -21,11 +21,10 @@ function loadSavedResolution() {
   }
 }
 
-// 再生バーの歯車アイコンの左側にVRCボタンを挿入 (列の配置を歯車の左に固定)
+// 再生バーの右側アイコン一覧の先頭（一番左）にVRCボタンを挿入
 function injectVrcButton() {
-  const settingsBtn = document.querySelector(".ytp-settings-button");
   const rightControls = document.querySelector(".ytp-right-controls");
-  if (!settingsBtn && !rightControls) return;
+  if (!rightControls) return;
 
   let btn = document.getElementById("vrc-player-button");
   if (!btn) {
@@ -34,22 +33,22 @@ function injectVrcButton() {
     btn.className = "ytp-button vrc-player-button";
     btn.setAttribute("aria-label", "VRChat リンク変換 (4K/1080p)");
     btn.setAttribute("title", "VRChat リンク変換 (4K/1080p)");
-    // VRChat公式フキダシ形状ロゴ (中心座標(18,18)に完全一致・内部鮮やかブルー版)
+    // VRChat公式フキダシ形状ロゴ (大きくハッキリ・少し上寄せ・内部ブルー版)
     btn.innerHTML = `
       <svg height="100%" version="1.1" viewBox="0 0 36 36" width="100%">
-        <path d="M 8.5 9 L 27.5 9 A 2.5 2.5 0 0 1 30 11.5 L 30 20.5 A 2.5 2.5 0 0 1 27.5 23 L 25.5 23 L 28 27 L 22 23 L 8.5 23 A 2.5 2.5 0 0 1 6 20.5 L 6 11.5 A 2.5 2.5 0 0 1 8.5 9 Z" 
+        <path d="M 7 6 L 29 6 A 3.5 3.5 0 0 1 32.5 9.5 L 32.5 18.5 A 3.5 3.5 0 0 1 29 22 L 28 22 L 30.5 26.5 L 24 22 L 7 22 A 3.5 3.5 0 0 1 3.5 18.5 L 3.5 9.5 A 3.5 3.5 0 0 1 7 6 Z" 
               fill="#0284c7" 
               stroke="#000000" 
               stroke-width="1.8" 
               stroke-linejoin="round"
               style="filter: drop-shadow(0.8px 1.2px 0px #000000);" />
-        <text x="18" y="19" 
+        <text x="18" y="17.2" 
               font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" 
-              font-size="8.6" 
+              font-size="10.5" 
               font-weight="900" 
               fill="#ffffff" 
               text-anchor="middle" 
-              letter-spacing="0.3">VRC</text>
+              letter-spacing="0.4">VRC</text>
       </svg>
     `;
 
@@ -60,13 +59,9 @@ function injectVrcButton() {
     });
   }
 
-  // 歯車ボタンのすぐ左側に整列（他ボタンとの重なりを防止）
-  if (settingsBtn && settingsBtn.parentNode) {
-    if (btn.nextElementSibling !== settingsBtn) {
-      settingsBtn.parentNode.insertBefore(btn, settingsBtn);
-    }
-  } else if (rightControls && rightControls.lastChild !== btn) {
-    rightControls.appendChild(btn);
+  // 右側のアイコン一覧（自動再生、字幕、歯車等）の「一番左（先頭）」に配置
+  if (rightControls.firstChild !== btn) {
+    rightControls.insertBefore(btn, rightControls.firstChild);
   }
 }
 
@@ -369,10 +364,14 @@ window.addEventListener("yt-navigate-finish", () => {
   setTimeout(injectVrcButton, 400);
 });
 
-// DOMの変更を監視して再生バーが現れたらボタンを挿入
+// DOMの変更を監視して再生バーが現れたらボタンを挿入 (常に一番左を維持)
 const observer = new MutationObserver(() => {
-  if (!document.getElementById("vrc-player-button") && document.querySelector(".ytp-right-controls")) {
-    injectVrcButton();
+  const rightControls = document.querySelector(".ytp-right-controls");
+  const btn = document.getElementById("vrc-player-button");
+  if (rightControls) {
+    if (!btn || rightControls.firstChild !== btn) {
+      injectVrcButton();
+    }
   }
 });
 
