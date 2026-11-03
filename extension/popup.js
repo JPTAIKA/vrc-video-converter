@@ -30,9 +30,6 @@ const elements = {
 
 // 初期化
 document.addEventListener("DOMContentLoaded", async () => {
-  // サーバーの死活確認
-  await detectServer();
-
   // 現在のアクティブタブを取得
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab && isYouTubeUrl(tab.url)) {
@@ -59,6 +56,14 @@ document.addEventListener("DOMContentLoaded", async () => {
   elements.btnOptions.addEventListener("click", () => {
     chrome.runtime.openOptionsPage();
   });
+
+  // サーバー死活チェック & 未起動ならChrome経由で完全自動起動
+  const running = await detectServer();
+  if (!running) {
+    ensureServerViaNative().then(ok => {
+      if (ok) detectServer();
+    });
+  }
 });
 
 // YouTube URLの判定
@@ -95,9 +100,27 @@ function extractVideoId(url) {
   }
 }
 
-// サーバー自動検出 (ローカル優先、無ければクラウド)
+// Native MessagingでChromeから直接バックエンドを自動起動
+function ensureServerViaNative() {
+  return new Promise((resolve) => {
+    try {
+      chrome.runtime.sendNativeMessage("vrc_video_converter", { action: "ensure_server" }, (response) => {
+        if (chrome.runtime.lastError) {
+          resolve(false);
+        } else if (response && response.status === "ready") {
+          resolve(true);
+        } else {
+          resolve(false);
+        }
+      });
+    } catch (e) {
+      resolve(false);
+    }
+  });
+}
+
+// サーバー自動検出
 async function detectServer() {
-  // 1. ローカルサーバー (127.0.0.1:8000) を確認
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 1200);
@@ -106,32 +129,32 @@ async function detectServer() {
     if (res.ok) {
       activeServerUrl = LOCAL_SERVER_URL;
       isLocalServerRunning = true;
-      elements.serverStatusText.textContent = "● 1080pサーバー稼働中 (ローカル超高速)";
+      elements.serverStatusText.textContent = "● 1080pサーバー稼働中 (自動連動)";
       elements.serverStatusText.style.color = "#10b981";
-      return;
+      return true;
     }
   } catch (e) {}
 
-  // 2. クラウドサーバー確認 (オプション)
+  // クラウドサーバー確認 (フォールバック)
   try {
     const stored = await chrome.storage.sync.get(["serverUrl"]);
     const remoteUrl = (stored.serverUrl || REMOTE_SERVER_URL).replace(/\/+$/, "");
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 2000);
+    const timeout = setTimeout(() => controller.abort(), 1500);
     const res = await fetch(`${remoteUrl}/health`, { signal: controller.signal });
     clearTimeout(timeout);
     if (res.ok) {
       activeServerUrl = remoteUrl;
       elements.serverStatusText.textContent = `● クラウドサーバー接続中 (${new URL(remoteUrl).hostname})`;
       elements.serverStatusText.style.color = "#06b6d4";
-      return;
+      return true;
     }
   } catch (e) {}
 
-  // サーバー未起動時
   isLocalServerRunning = false;
-  elements.serverStatusText.textContent = "▲ 1080pサーバー未起動 (bat起動で有効化)";
-  elements.serverStatusText.style.color = "#f59e0b";
+  elements.serverStatusText.textContent = "○ サーバー待機中 (ボタンクリックで自動起動)";
+  elements.serverStatusText.style.color = "#94a3b8";
+  return false;
 }
 
 // 1. 高画質 (1080p) 変換ハンドラ
@@ -144,6 +167,17 @@ async function handleHqConvert() {
   elements.loadingSubtext.textContent = "※ 映像と音声を高速結合しています (約3〜5秒)";
 
   try {
+    // サーバーがまだ応答していない場合、Chromeから自動起動を指示
+    if (!isLocalServerRunning) {
+      elements.loadingText.textContent = "1080p変換エンジンを自動起動中...";
+      const booted = await ensureServerViaNative();
+      if (booted) {
+        isLocalServerRunning = true;
+        activeServerUrl = LOCAL_SERVER_URL;
+        elements.loadingText.textContent = "1080p高画質ストリームを生成中...";
+      }
+    }
+
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 45000);
 
@@ -172,11 +206,7 @@ async function handleHqConvert() {
     await copyToClipboard(data.stream_url);
 
   } catch (err) {
-    if (!isLocalServerRunning) {
-      displayError("1080p高画質サーバーが起動していません。「【VRC1080p起動】Chrome連動.bat」をダブルクリックして起動してください。（※Chrome起動中のみ動作します）");
-    } else {
-      displayError(`高画質変換エラー: ${err.message}`);
-    }
+    displayError(`高画質変換エラー: ${err.message}`);
   } finally {
     elements.loadingBox.classList.add("hidden");
   }
