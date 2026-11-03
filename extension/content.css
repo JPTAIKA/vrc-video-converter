@@ -1,0 +1,337 @@
+/* VRChat Player Button & In-Player Popup Styles */
+
+/* 1. YouTube 再生バー上のVRCアイコンボタン */
+.vrc-player-button {
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 100%;
+  padding: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  vertical-align: top;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+  user-select: none;
+}
+
+.vrc-player-button:hover {
+  opacity: 1 !important;
+  transform: scale(1.08);
+}
+
+.vrc-player-button svg {
+  width: 32px;
+  height: 32px;
+  filter: drop-shadow(0 0 3px rgba(6, 182, 212, 0.4));
+  transition: filter 0.2s ease;
+}
+
+.vrc-player-button:hover svg {
+  filter: drop-shadow(0 0 8px rgba(6, 182, 212, 0.8));
+}
+
+/* 2. 動画プレイヤー上のポップアップパネル */
+#vrc-inplayer-popup {
+  position: absolute;
+  bottom: 60px;
+  right: 60px;
+  width: 320px;
+  background: rgba(15, 20, 28, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid #2a374d;
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 1px rgba(6, 182, 212, 0.5);
+  color: #f0f4f8;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 13px;
+  line-height: 1.4;
+  z-index: 999999;
+  user-select: none;
+  animation: vrcFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes vrcFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* ヘッダー */
+.vrc-popup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #232d3f;
+  margin-bottom: 10px;
+}
+
+.vrc-header-title-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.vrc-logo-badge {
+  background: linear-gradient(135deg, #06b6d4, #3b82f6);
+  color: #fff;
+  font-weight: 800;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.5px;
+}
+
+.vrc-popup-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.vrc-btn-close {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+
+.vrc-btn-close:hover {
+  color: #fff;
+  background: #232d3f;
+}
+
+/* 解像度選択エリア */
+.vrc-res-section {
+  background: #141b26;
+  border: 1px solid #253346;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+
+.vrc-res-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.vrc-res-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.vrc-res-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: #06b6d4;
+  background: rgba(6, 182, 212, 0.15);
+  padding: 1px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(6, 182, 212, 0.3);
+}
+
+.vrc-pills-row {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 4px;
+}
+
+.vrc-pill-btn {
+  background: #0f141c;
+  border: 1px solid #2a374d;
+  border-radius: 6px;
+  padding: 5px 2px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  color: #94a3b8;
+}
+
+.vrc-pill-btn:hover {
+  border-color: #06b6d4;
+  color: #fff;
+  background: #182232;
+}
+
+.vrc-pill-btn.active {
+  background: linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(59, 130, 246, 0.25));
+  border-color: #06b6d4;
+  color: #fff;
+  box-shadow: 0 0 8px rgba(6, 182, 212, 0.3);
+}
+
+.vrc-pill-title {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.vrc-pill-btn.active .vrc-pill-title {
+  color: #38bdf8;
+}
+
+.vrc-pill-sub {
+  font-size: 9px;
+  opacity: 0.8;
+  margin-top: 1px;
+}
+
+/* アクションボタン群 */
+.vrc-actions-box {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.vrc-action-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.vrc-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.vrc-btn-primary {
+  background: linear-gradient(135deg, #0891b2, #2563eb);
+  color: #ffffff;
+  border-color: #06b6d4;
+  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.25);
+}
+
+.vrc-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #06b6d4, #1d4ed8);
+  box-shadow: 0 4px 12px rgba(6, 182, 212, 0.4);
+  transform: translateY(-1px);
+}
+
+.vrc-btn-secondary {
+  background: #1a2230;
+  color: #cbd5e1;
+  border-color: #2e3e55;
+}
+
+.vrc-btn-secondary:hover:not(:disabled) {
+  background: #232d3f;
+  color: #ffffff;
+  border-color: #475569;
+}
+
+.vrc-btn-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.vrc-btn-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.vrc-btn-title {
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.vrc-btn-desc {
+  font-size: 10px;
+  opacity: 0.8;
+}
+
+/* 処理中インジケータ */
+.vrc-status-box {
+  background: #141b26;
+  border: 1px solid #253346;
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.vrc-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(6, 182, 212, 0.2);
+  border-top-color: #06b6d4;
+  border-radius: 50%;
+  animation: vrcSpin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes vrcSpin {
+  to { transform: rotate(360deg); }
+}
+
+.vrc-status-text {
+  font-size: 11px;
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+/* 成功・結果表示 */
+.vrc-result-box {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: 6px;
+  animation: vrcFadeIn 0.2s ease;
+}
+
+.vrc-result-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #34d399;
+  margin-bottom: 3px;
+}
+
+.vrc-result-msg {
+  font-size: 11px;
+  color: #e2e8f0;
+}
+
+/* エラー表示 */
+.vrc-error-box {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: 6px;
+  color: #f87171;
+  font-size: 11px;
+}
