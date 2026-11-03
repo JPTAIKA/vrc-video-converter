@@ -33,21 +33,22 @@ function injectVrcButton() {
     btn.className = "ytp-button vrc-player-button";
     btn.setAttribute("aria-label", "VRChat リンク変換 (4K/1080p)");
     btn.setAttribute("title", "VRChat リンク変換 (4K/1080p)");
-    // VRChat公式フキダシ形状ロゴ (大きくハッキリ・少し上寄せ・内部ブルー版)
+    // VRChat公式フキダシ形状ロゴ (32x32完全準拠・内部ブルー版)
     btn.innerHTML = `
-      <svg height="100%" version="1.1" viewBox="0 0 36 36" width="100%">
-        <path d="M 7 6 L 29 6 A 3.5 3.5 0 0 1 32.5 9.5 L 32.5 18.5 A 3.5 3.5 0 0 1 29 22 L 28 22 L 30.5 26.5 L 24 22 L 7 22 A 3.5 3.5 0 0 1 3.5 18.5 L 3.5 9.5 A 3.5 3.5 0 0 1 7 6 Z" 
+      <svg height="32" width="32" viewBox="0 0 32 32" version="1.1">
+        <path d="M 5.5 5 L 26.5 5 A 3 3 0 0 1 29.5 8 L 29.5 18 A 3 3 0 0 1 26.5 21 L 25.5 21 L 27.5 25.5 L 21.5 21 L 5.5 21 A 3 3 0 0 1 2.5 18 L 2.5 8 A 3 3 0 0 1 5.5 5 Z" 
               fill="#0284c7" 
               stroke="#000000" 
-              stroke-width="1.8" 
+              stroke-width="1.6" 
               stroke-linejoin="round"
-              style="filter: drop-shadow(0.8px 1.2px 0px #000000);" />
-        <text x="18" y="17.2" 
+              style="filter: drop-shadow(0.8px 1px 0px #000000);" />
+        <text x="16" y="13" 
+              dominant-baseline="central"
+              text-anchor="middle"
               font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" 
-              font-size="10.5" 
+              font-size="9.5" 
               font-weight="900" 
               fill="#ffffff" 
-              text-anchor="middle" 
               letter-spacing="0.4">VRC</text>
       </svg>
     `;

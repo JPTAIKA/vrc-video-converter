@@ -28,8 +28,8 @@
 
 .vrc-player-button svg {
   display: block !important;
-  width: 38px !important;
-  height: 38px !important;
+  width: 32px !important;
+  height: 32px !important;
   margin: auto !important;
   pointer-events: none !important;
 }
