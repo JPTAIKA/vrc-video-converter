@@ -38,6 +38,7 @@ def get_quick_stream_info(canonical_url: str) -> dict:
 
     if os.path.exists(settings.COOKIES_FILE):
         ydl_opts['cookiefile'] = settings.COOKIES_FILE
+        ydl_opts.pop('extractor_args', None)
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -116,6 +117,7 @@ async def download_high_quality(canonical_url: str, video_id: str) -> dict:
 
         if os.path.exists(settings.COOKIES_FILE):
             ydl_opts['cookiefile'] = settings.COOKIES_FILE
+            ydl_opts.pop('extractor_args', None)
 
         # 非同期ループをブロックしないよう別スレッドで実行
         loop = asyncio.get_running_loop()
