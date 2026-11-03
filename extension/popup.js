@@ -140,23 +140,32 @@ function applyResolution(res) {
   });
 
   const labels = {
+    "2160": "4K 超精細 (2160p)",
     "1080": "1080p 最高画質",
     "720": "720p 高画質",
     "480": "480p 標準",
     "360": "360p 軽量"
   };
+  const btnLabels = {
+    "2160": "4K",
+    "1080": "1080p",
+    "720": "720p",
+    "480": "480p",
+    "360": "360p"
+  };
   if (elements.resBadge) elements.resBadge.textContent = labels[res] || `${res}p`;
-  if (elements.btnResLabel) elements.btnResLabel.textContent = `${res}p`;
+  if (elements.btnResLabel) elements.btnResLabel.textContent = btnLabels[res] || `${res}p`;
 }
 
 // 1. 高画質/指定解像度 変換ハンドラ - Native Messagingで完全自動実行
 async function handleHqConvert() {
   if (!currentVideoUrl) return;
 
+  const resName = selectedResolution === "2160" ? "4K" : `${selectedResolution}p`;
   hideBoxes();
   elements.loadingBox.classList.remove("hidden");
-  elements.loadingText.textContent = `${selectedResolution}p ストリームを生成中...`;
-  elements.loadingSubtext.textContent = `※ ${selectedResolution}p 映像と音声を高速結合しています (約2〜5秒)`;
+  elements.loadingText.textContent = `${resName} ストリームを生成中...`;
+  elements.loadingSubtext.textContent = `※ ${resName} 映像と音声を高速結合しています (約2〜10秒)`;
   elements.btnHqConvert.disabled = true;
 
   try {
@@ -180,13 +189,13 @@ async function handleHqConvert() {
 
         if (response.status === "success" && response.stream_url) {
           displaySuccess({
-            quality: `${selectedResolution}p (VRChat最適化)`,
+            quality: `${resName} (${response.quality || "VRChat最適化"})`,
             stream_url: response.stream_url,
-            meta: `※ ${selectedResolution}p ストリームです。VRChatプレイヤーに貼り付けて再生してください！`
+            meta: `※ ${resName} ストリームです。VRChatプレイヤーに貼り付けて再生してください！`
           });
           await copyToClipboard(response.stream_url);
         } else {
-          displayError(response.detail || `${selectedResolution}p 生成に失敗しました。`);
+          displayError(response.detail || `${resName} 生成に失敗しました。`);
         }
       }
     );

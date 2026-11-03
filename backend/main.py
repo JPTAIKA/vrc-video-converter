@@ -167,7 +167,7 @@ app.add_middleware(
 class ConvertRequest(BaseModel):
     url: str = Field(..., description="YouTubeの動画URL")
     mode: str = Field(default="quick", description="変換モード ('quick' または 'hq')")
-    resolution: Optional[str] = Field(default="1080", description="希望解像度 ('1080', '720', '480', '360')")
+    resolution: Optional[str] = Field(default="1080", description="希望解像度 ('2160', '1080', '720', '480', '360')")
 
 
 @app.get("/health")

@@ -114,13 +114,23 @@ async def download_high_quality(canonical_url: str, video_id: str, resolution: s
         file_id = f"{video_id}_{res_int}p_{hash_suffix}"
         output_template = os.path.join(settings.CACHE_DIR, f"{file_id}.%(ext)s")
 
-        format_spec = (
-            f'bestvideo[height<={res_int}][vcodec^=avc1]+bestaudio[acodec^=mp4a]/'
-            f'bestvideo[height<={res_int}][vcodec^=avc]+bestaudio[ext=m4a]/'
-            f'bestvideo[height<={res_int}][ext=mp4]+bestaudio[ext=m4a]/'
-            f'best[height<={res_int}][ext=mp4]/'
-            f'best[height<={res_int}]/best'
-        )
+        if res_int >= 1440:
+            # 2K/4KはYouTube側にH.264(avc1)が存在しないため、VP9/AV1を許可してMP4コンテナに高速多重化
+            format_spec = (
+                f'bestvideo[height<={res_int}][vcodec^=vp09]+bestaudio[acodec^=mp4a]/'
+                f'bestvideo[height<={res_int}][vcodec^=vp9]+bestaudio[acodec^=mp4a]/'
+                f'bestvideo[height<={res_int}]+bestaudio[ext=m4a]/'
+                f'bestvideo[height<={res_int}]+bestaudio/'
+                f'best[height<={res_int}]/best'
+            )
+        else:
+            format_spec = (
+                f'bestvideo[height<={res_int}][vcodec^=avc1]+bestaudio[acodec^=mp4a]/'
+                f'bestvideo[height<={res_int}][vcodec^=avc]+bestaudio[ext=m4a]/'
+                f'bestvideo[height<={res_int}][ext=mp4]+bestaudio[ext=m4a]/'
+                f'best[height<={res_int}][ext=mp4]/'
+                f'best[height<={res_int}]/best'
+            )
 
         ydl_opts = {
             'http_headers': COMMON_HEADERS,
