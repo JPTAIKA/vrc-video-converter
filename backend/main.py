@@ -31,14 +31,14 @@ async def periodic_cache_cleanup():
             print(f"[Cleanup Error] {e}")
 
 
-# Cloudflare Quick Tunnel プロセス (友達との共有用パブリックURL生成)
+# Cloudflare Quick Tunnel プロセス (VRChatの127.0.0.1制限回避＆ワールド内共有用パブリックURL生成)
 tunnel_process = None
 
 def run_cloudflared_tunnel():
     global tunnel_process
     cf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cloudflared.exe")
     if os.path.exists(cf_path) and not settings.BASE_URL:
-        import subprocess, re
+        import subprocess, re, time
         try:
             flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
             tunnel_process = subprocess.Popen(
@@ -48,7 +48,13 @@ def run_cloudflared_tunnel():
                 text=True,
                 creationflags=flags
             )
-            for line in tunnel_process.stderr:
+            while True:
+                line = tunnel_process.stderr.readline()
+                if not line:
+                    if tunnel_process.poll() is not None:
+                        break
+                    time.sleep(0.1)
+                    continue
                 if "trycloudflare.com" in line:
                     m = re.search(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com", line)
                     if m:
@@ -74,14 +80,23 @@ def monitor_chrome_and_autoshutdown():
                     text=True,
                     creationflags=flags
                 )
-                if "chrome.exe" not in res.stdout:
-                    print("[Auto-Shutdown] Chrome has exited. Shutting down server...")
-                    if tunnel_process:
-                        try:
-                            tunnel_process.terminate()
-                        except Exception:
-                            pass
-                    os._exit(0)
+                if res.returncode == 0 and "chrome.exe" not in res.stdout:
+                    # 誤終了を防ぐため3秒後に再確認
+                    time.sleep(3)
+                    res2 = subprocess.run(
+                        ["tasklist", "/FI", "IMAGENAME eq chrome.exe"],
+                        capture_output=True,
+                        text=True,
+                        creationflags=flags
+                    )
+                    if res2.returncode == 0 and "chrome.exe" not in res2.stdout:
+                        print("[Auto-Shutdown] Chrome has exited. Shutting down server...")
+                        if tunnel_process:
+                            try:
+                                tunnel_process.terminate()
+                            except Exception:
+                                pass
+                        os._exit(0)
             except Exception:
                 pass
 
@@ -265,8 +280,15 @@ async def convert_video(req: ConvertRequest, request: Request):
     # 2. 安全なURLの検証と抽出 (SSRF対策)
     video_id, canonical_url = extract_and_validate_youtube_url(req.url)
 
-    # ベースURLの解決 (Renderなどの環境変数、またはホストヘッダー)
+    # ベースURLの解決 (VRChatは127.0.0.1をセキュリティでブロックするためTunnel URLを優先)
     base_url = settings.BASE_URL.rstrip("/")
+    if not base_url:
+        for _ in range(12): # 最大6秒間Tunnelの確立を待機
+            if settings.BASE_URL:
+                base_url = settings.BASE_URL.rstrip("/")
+                break
+            await asyncio.sleep(0.5)
+
     if not base_url:
         host = request.headers.get("host", f"{settings.HOST}:{settings.PORT}")
         scheme = request.headers.get("x-forwarded-proto", "http")
