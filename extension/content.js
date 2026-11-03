@@ -21,10 +21,11 @@ function loadSavedResolution() {
   }
 }
 
-// 再生バーの右側アイコン一覧の先頭（一番左）にVRCボタンを挿入
+// 再生バーの歯車アイコンの左側にVRCボタンを挿入 (列の配置を歯車の左に固定)
 function injectVrcButton() {
+  const settingsBtn = document.querySelector(".ytp-settings-button");
   const rightControls = document.querySelector(".ytp-right-controls");
-  if (!rightControls) return;
+  if (!settingsBtn && !rightControls) return;
 
   let btn = document.getElementById("vrc-player-button");
   if (!btn) {
@@ -33,22 +34,22 @@ function injectVrcButton() {
     btn.className = "ytp-button vrc-player-button";
     btn.setAttribute("aria-label", "VRChat リンク変換 (4K/1080p)");
     btn.setAttribute("title", "VRChat リンク変換 (4K/1080p)");
-    // VRChat公式のフキダシ形状ロゴ (内部をホワイトから鮮やかなブルーにした特製バージョン)
+    // VRChat公式フキダシ形状ロゴ (上下左右中央に完全に整列した内部ブルー版)
     btn.innerHTML = `
       <svg height="100%" version="1.1" viewBox="0 0 36 36" width="100%">
-        <path d="M 8.5 10 L 27.5 10 A 3 3 0 0 1 30.5 13 L 30.5 20.5 A 3 3 0 0 1 27.5 23.5 L 26 23.5 L 28.2 27.5 L 22.5 23.5 L 8.5 23.5 A 3 3 0 0 1 5.5 20.5 L 5.5 13 A 3 3 0 0 1 8.5 10 Z" 
+        <path d="M 10.5 10.5 L 25.5 10.5 A 2.5 2.5 0 0 1 28 13 L 28 20.5 A 2.5 2.5 0 0 1 25.5 23 L 24 23 L 26 26.5 L 21.5 23 L 10.5 23 A 2.5 2.5 0 0 1 8 20.5 L 8 13 A 2.5 2.5 0 0 1 10.5 10.5 Z" 
               fill="#0284c7" 
               stroke="#000000" 
               stroke-width="1.8" 
               stroke-linejoin="round"
-              style="filter: drop-shadow(0.8px 1.2px 0px #000000);" />
-        <text x="17.2" y="19.5" 
+              style="filter: drop-shadow(0.8px 1px 0px #000000);" />
+        <text x="17.8" y="19.2" 
               font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" 
-              font-size="8.8" 
+              font-size="8.2" 
               font-weight="900" 
               fill="#ffffff" 
               text-anchor="middle" 
-              letter-spacing="0.4">VRC</text>
+              letter-spacing="0.3">VRC</text>
       </svg>
     `;
 
@@ -59,9 +60,13 @@ function injectVrcButton() {
     });
   }
 
-  // 右側のアイコン一覧（自動再生、字幕、歯車等）の「一番左（先頭）」に配置
-  if (rightControls.firstChild !== btn) {
-    rightControls.insertBefore(btn, rightControls.firstChild);
+  // 歯車ボタンのすぐ左側に整列（他ボタンとの重なりを防止）
+  if (settingsBtn && settingsBtn.parentNode) {
+    if (settingsBtn.previousSibling !== btn) {
+      settingsBtn.parentNode.insertBefore(btn, settingsBtn);
+    }
+  } else if (rightControls && rightControls.lastChild !== btn) {
+    rightControls.appendChild(btn);
   }
 }
 

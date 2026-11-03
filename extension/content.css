@@ -1,21 +1,11 @@
 /* VRChat Player Button & In-Player Popup Styles */
 
-/* 1. YouTube 再生バー上のVRCアイコンボタン (YouTube純正ボタンと完全に同じ高さ・基準線で整列) */
+/* 1. YouTube 再生バー上のVRCアイコンボタン (YouTube純正.ytp-buttonの規格に完全準拠) */
 .vrc-player-button {
   cursor: pointer;
-  padding: 0;
-  border: none;
-  background: transparent;
-  outline: none;
-  width: 48px;
-  height: 100%;
-  text-align: center;
-  vertical-align: top;
-  display: inline-block;
   opacity: 0.9;
   transition: opacity 0.15s ease;
   user-select: none;
-  position: relative;
 }
 
 .vrc-player-button:hover {
