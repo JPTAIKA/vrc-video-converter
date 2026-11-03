@@ -1,11 +1,25 @@
 /* VRChat Player Button & In-Player Popup Styles */
 
-/* 1. YouTube 再生バー上のVRCアイコンボタン (YouTube純正.ytp-buttonの規格に完全準拠) */
+/* 1. YouTube 再生バー上のVRCアイコンボタン (YouTube純正.ytp-buttonの規格に完全準拠し、上下左右を完全中央固定) */
 .vrc-player-button {
-  cursor: pointer;
-  opacity: 0.9;
-  transition: opacity 0.15s ease;
-  user-select: none;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 48px !important;
+  height: 100% !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  outline: none !important;
+  vertical-align: top !important;
+  box-sizing: border-box !important;
+  opacity: 0.9 !important;
+  transition: opacity 0.15s ease !important;
+  user-select: none !important;
+  line-height: normal !important;
+  text-align: center !important;
 }
 
 .vrc-player-button:hover {
@@ -13,10 +27,11 @@
 }
 
 .vrc-player-button svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
+  display: block !important;
+  width: 32px !important;
+  height: 32px !important;
+  margin: auto !important;
+  pointer-events: none !important;
 }
 
 .vrc-player-button svg path {

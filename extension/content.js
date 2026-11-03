@@ -34,18 +34,18 @@ function injectVrcButton() {
     btn.className = "ytp-button vrc-player-button";
     btn.setAttribute("aria-label", "VRChat リンク変換 (4K/1080p)");
     btn.setAttribute("title", "VRChat リンク変換 (4K/1080p)");
-    // VRChat公式フキダシ形状ロゴ (上下左右中央に完全に整列した内部ブルー版)
+    // VRChat公式フキダシ形状ロゴ (中心座標(18,18)に完全一致・内部鮮やかブルー版)
     btn.innerHTML = `
       <svg height="100%" version="1.1" viewBox="0 0 36 36" width="100%">
-        <path d="M 10.5 10.5 L 25.5 10.5 A 2.5 2.5 0 0 1 28 13 L 28 20.5 A 2.5 2.5 0 0 1 25.5 23 L 24 23 L 26 26.5 L 21.5 23 L 10.5 23 A 2.5 2.5 0 0 1 8 20.5 L 8 13 A 2.5 2.5 0 0 1 10.5 10.5 Z" 
+        <path d="M 8.5 9 L 27.5 9 A 2.5 2.5 0 0 1 30 11.5 L 30 20.5 A 2.5 2.5 0 0 1 27.5 23 L 25.5 23 L 28 27 L 22 23 L 8.5 23 A 2.5 2.5 0 0 1 6 20.5 L 6 11.5 A 2.5 2.5 0 0 1 8.5 9 Z" 
               fill="#0284c7" 
               stroke="#000000" 
               stroke-width="1.8" 
               stroke-linejoin="round"
-              style="filter: drop-shadow(0.8px 1px 0px #000000);" />
-        <text x="17.8" y="19.2" 
+              style="filter: drop-shadow(0.8px 1.2px 0px #000000);" />
+        <text x="18" y="19" 
               font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif" 
-              font-size="8.2" 
+              font-size="8.6" 
               font-weight="900" 
               fill="#ffffff" 
               text-anchor="middle" 
@@ -62,7 +62,7 @@ function injectVrcButton() {
 
   // 歯車ボタンのすぐ左側に整列（他ボタンとの重なりを防止）
   if (settingsBtn && settingsBtn.parentNode) {
-    if (settingsBtn.previousSibling !== btn) {
+    if (btn.nextElementSibling !== settingsBtn) {
       settingsBtn.parentNode.insertBefore(btn, settingsBtn);
     }
   } else if (rightControls && rightControls.lastChild !== btn) {
