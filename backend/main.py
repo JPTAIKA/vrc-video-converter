@@ -33,7 +33,15 @@ async def periodic_cache_cleanup():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 起動時
+    # 起動時: 環境変数にCookieがあればファイルとして書き出し
+    if settings.YOUTUBE_COOKIES:
+        try:
+            with open(settings.COOKIES_FILE, "w", encoding="utf-8") as f:
+                f.write(settings.YOUTUBE_COOKIES)
+            print("[Cookies] Loaded YOUTUBE_COOKIES from environment variable.")
+        except Exception as e:
+            print(f"[Cookies Error] {e}")
+
     clean_expired_cache()
     task = asyncio.create_task(periodic_cache_cleanup())
     yield
@@ -65,7 +73,27 @@ class ConvertRequest(BaseModel):
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "vrc-video-converter", "version": "1.0.2"}
+    return {"status": "ok", "service": "vrc-video-converter", "version": "1.0.3"}
+
+@app.get("/api/test_clients")
+def test_clients(v: str = "OWDcn7hl16A"):
+    import yt_dlp
+    results = {}
+    clients = ['ios', 'android', 'mweb', 'tv', 'web_embedded', 'android_vr', 'visionos']
+    url = f"https://www.youtube.com/watch?v={v}"
+    for c in clients:
+        ydl_opts = {
+            'extractor_args': {'youtube': {'player_client': [c]}},
+            'quiet': True,
+            'skip_download': True
+        }
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info = ydl.extract_info(url, download=False)
+                results[c] = f"SUCCESS (formats: {len(info.get('formats', []))})"
+        except Exception as e:
+            results[c] = f"FAIL: {str(e)[:60]}"
+    return results
 
 
 @app.post("/api/convert")

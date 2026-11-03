@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     MAX_CONCURRENT_DOWNLOADS: int = 2       # 同時DL数制限 (CPU/帯域のパンク防止)
     RATE_LIMIT_PER_MINUTE: int = 10         # 1IPあたりの分間最大リクエスト数
 
+    # Cookie設定 (クラウドIPのBot対策用)
+    YOUTUBE_COOKIES: str = os.getenv("YOUTUBE_COOKIES", "")
+    COOKIES_FILE: str = os.getenv("COOKIES_FILE", os.path.join(os.path.dirname(os.path.abspath(__file__)), "cookies.txt"))
+
     # 許可するYouTubeドメイン
     ALLOWED_DOMAINS: list[str] = [
         "youtube.com",

@@ -1,8 +1,8 @@
 FROM python:3.11-slim
 
-# ffmpeg (映像と音声の結合・多重化に必須) と最小限の依存関係をインストール
+# ffmpeg と nodejs (YouTube JSチャレンジ解決用) をインストール
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg curl && \
+    apt-get install -y --no-install-recommends ffmpeg curl nodejs && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

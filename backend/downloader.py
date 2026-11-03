@@ -36,6 +36,9 @@ def get_quick_stream_info(canonical_url: str) -> dict:
         'skip_download': True,
     }
 
+    if os.path.exists(settings.COOKIES_FILE):
+        ydl_opts['cookiefile'] = settings.COOKIES_FILE
+
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(canonical_url, download=False)
@@ -110,6 +113,9 @@ async def download_high_quality(canonical_url: str, video_id: str) -> dict:
             'no_warnings': True,
             'max_filesize': 500 * 1024 * 1024, # 500MB超は拒否 (無料鯖保護)
         }
+
+        if os.path.exists(settings.COOKIES_FILE):
+            ydl_opts['cookiefile'] = settings.COOKIES_FILE
 
         # 非同期ループをブロックしないよう別スレッドで実行
         loop = asyncio.get_running_loop()
