@@ -59,6 +59,33 @@ def run_cloudflared_tunnel():
             print(f"[Tunnel Error] {e}")
 
 
+# Chrome終了時の自動シャットダウン監視
+def monitor_chrome_and_autoshutdown():
+    import time, subprocess
+    time.sleep(20) # 起動直後は20秒待機
+    while True:
+        time.sleep(6)
+        if os.name == 'nt':
+            try:
+                flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+                res = subprocess.run(
+                    ["tasklist", "/FI", "IMAGENAME eq chrome.exe"],
+                    capture_output=True,
+                    text=True,
+                    creationflags=flags
+                )
+                if "chrome.exe" not in res.stdout:
+                    print("[Auto-Shutdown] Chrome has exited. Shutting down server...")
+                    if tunnel_process:
+                        try:
+                            tunnel_process.terminate()
+                        except Exception:
+                            pass
+                    os._exit(0)
+            except Exception:
+                pass
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 起動時: 環境変数にCookieがあればファイルとして書き出し
@@ -90,6 +117,7 @@ async def lifespan(app: FastAPI):
     # ローカル実行時のCloudflareトンネル起動 (友達共有用)
     import threading
     threading.Thread(target=run_cloudflared_tunnel, daemon=True).start()
+    threading.Thread(target=monitor_chrome_and_autoshutdown, daemon=True).start()
 
     clean_expired_cache()
     task = asyncio.create_task(periodic_cache_cleanup())

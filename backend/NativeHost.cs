@@ -9,12 +9,8 @@ namespace VrcNativeHost
 {
     class Program
     {
-        static Process serverProc = null;
-
         static void Main(string[] args)
         {
-            AppDomain.CurrentDomain.ProcessExit += (s, e) => StopServer();
-
             try
             {
                 using (Stream stdin = Console.OpenStandardInput())
@@ -40,7 +36,7 @@ namespace VrcNativeHost
 
                         string message = Encoding.UTF8.GetString(buffer, 0, totalRead);
 
-                        // 1. サーバー起動確認
+                        // 1. サーバー起動確認 (起動していなければバックグラウンド起動)
                         bool ready = EnsureServer();
                         if (!ready)
                         {
@@ -99,10 +95,8 @@ namespace VrcNativeHost
             catch (Exception)
             {
             }
-            finally
-            {
-                StopServer();
-            }
+            // 注意: ここでサーバーを停止してはいけない (VRChatがストリーミング再生するため)
+            // サーバーの停止はChromeのプロセス終了を監視してmain.py自身が行う
         }
 
         static void SendJson(Stream stdout, string json)
@@ -142,7 +136,6 @@ namespace VrcNativeHost
             if (IsServerAlive()) return true;
 
             string backendDir = AppDomain.CurrentDomain.BaseDirectory;
-            string mainPy = Path.Combine(backendDir, "main.py");
             string pythonExe = @"C:\Users\TAIKA\AppData\Local\Programs\Python\Python310\python.exe";
 
             if (!File.Exists(pythonExe))
@@ -159,7 +152,7 @@ namespace VrcNativeHost
                 psi.CreateNoWindow = true;
                 psi.UseShellExecute = false;
 
-                serverProc = Process.Start(psi);
+                Process.Start(psi);
 
                 for (int i = 0; i < 24; i++)
                 {
@@ -172,29 +165,6 @@ namespace VrcNativeHost
             }
 
             return false;
-        }
-
-        static void StopServer()
-        {
-            try
-            {
-                if (serverProc != null && !serverProc.HasExited)
-                {
-                    serverProc.Kill();
-                }
-            }
-            catch { }
-
-            try
-            {
-                ProcessStartInfo psi = new ProcessStartInfo();
-                psi.FileName = "cmd.exe";
-                psi.Arguments = "/c for /f \"tokens=5\" %a in ('netstat -aon ^| findstr :8000') do taskkill /F /PID %a 2>nul & taskkill /F /IM cloudflared.exe 2>nul";
-                psi.CreateNoWindow = true;
-                psi.UseShellExecute = false;
-                Process.Start(psi);
-            }
-            catch { }
         }
     }
 }
