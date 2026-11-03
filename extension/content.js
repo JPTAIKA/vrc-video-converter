@@ -21,37 +21,35 @@ function loadSavedResolution() {
   }
 }
 
-// 再生バーの歯車の左にVRCボタンを挿入
+// 再生バーの右側アイコン一覧の先頭（一番左）にVRCボタンを挿入
 function injectVrcButton() {
-  if (document.getElementById("vrc-player-button")) return;
-
   const rightControls = document.querySelector(".ytp-right-controls");
-  const settingsBtn = document.querySelector(".ytp-settings-button");
-
   if (!rightControls) return;
 
-  const btn = document.createElement("button");
-  btn.id = "vrc-player-button";
-  btn.className = "ytp-button vrc-player-button";
-  btn.setAttribute("aria-label", "VRChat リンク変換 (4K/1080p)");
-  btn.setAttribute("title", "VRChat リンク変換 (4K/1080p)");
-  btn.innerHTML = `
-    <svg viewBox="0 0 36 36" width="100%" height="100%">
-      <rect x="3" y="9" width="30" height="18" rx="5" fill="#06b6d4" fill-opacity="0.22" stroke="#06b6d4" stroke-width="1.8"/>
-      <text x="18" y="22" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10.5" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="0.5">VRC</text>
-    </svg>
-  `;
+  let btn = document.getElementById("vrc-player-button");
+  if (!btn) {
+    btn = document.createElement("button");
+    btn.id = "vrc-player-button";
+    btn.className = "ytp-button vrc-player-button";
+    btn.setAttribute("aria-label", "VRChat リンク変換 (4K/1080p)");
+    btn.setAttribute("title", "VRChat リンク変換 (4K/1080p)");
+    // 内部の文字も含めて全体を鮮やかなブルー (シアンブルー) に配色
+    btn.innerHTML = `
+      <svg viewBox="0 0 36 36" width="100%" height="100%">
+        <rect x="3" y="9.5" width="30" height="17" rx="5" fill="rgba(14, 165, 233, 0.22)" stroke="#0ea5e9" stroke-width="1.8"/>
+        <text x="18" y="21.8" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="900" fill="#38bdf8" text-anchor="middle" letter-spacing="0.5">VRC</text>
+      </svg>
+    `;
 
-  // クリックでインプレーヤーポップアップを開閉
-  btn.addEventListener("click", (e) => {
-    e.stopPropagation();
-    toggleInPlayerPopup();
-  });
+    // クリックでインプレーヤーポップアップを開閉
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      toggleInPlayerPopup();
+    });
+  }
 
-  // 歯車ボタンの左側に挿入 (歯車がなければ右側コントロール群の先頭に配置)
-  if (settingsBtn && settingsBtn.parentNode) {
-    settingsBtn.parentNode.insertBefore(btn, settingsBtn);
-  } else {
+  // 右側のアイコン一覧（自動再生、字幕、歯車等）の「一番左（先頭）」に配置
+  if (rightControls.firstChild !== btn) {
     rightControls.insertBefore(btn, rightControls.firstChild);
   }
 }
@@ -67,6 +65,7 @@ function toggleInPlayerPopup() {
 
 function openPopup() {
   const player = document.getElementById("movie_player") || document.querySelector(".html5-video-player");
+  const btn = document.getElementById("vrc-player-button");
   if (!player) return;
 
   // 既存があれば削除
@@ -74,6 +73,14 @@ function openPopup() {
 
   inPlayerPopup = document.createElement("div");
   inPlayerPopup.id = "vrc-inplayer-popup";
+
+  // ボタンの位置に合わせてポップアップの右位置を動的調整
+  if (btn) {
+    const btnRect = btn.getBoundingClientRect();
+    const playerRect = player.getBoundingClientRect();
+    const rightOffset = playerRect.right - btnRect.right - 10;
+    inPlayerPopup.style.right = `${Math.max(12, Math.round(rightOffset))}px`;
+  }
 
   const resName = selectedResolution === "2160" ? "4K" : `${selectedResolution}p`;
 
