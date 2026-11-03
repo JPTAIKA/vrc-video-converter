@@ -95,17 +95,25 @@ function openPopup() {
   }
 
   const resName = selectedResolution === "2160" ? "4K" : `${selectedResolution}p`;
+  const meta = getCurrentVideoMeta();
 
   inPlayerPopup.innerHTML = `
     <div class="vrc-popup-header">
       <div class="vrc-header-title-box">
         <span class="vrc-logo-badge">VRC 1080p/4K</span>
-        <span class="vrc-popup-title">リンク変換</span>
+        <span class="vrc-popup-title">動画リンク変換</span>
       </div>
       <button class="vrc-btn-close" id="vrc-close-popup" title="閉じる">✕</button>
     </div>
 
-    <!-- 画質選択 -->
+    <!-- 現在の動画情報カード -->
+    <div class="vrc-video-card">
+      <div class="vrc-section-label">現在の動画</div>
+      <div class="vrc-video-title" title="${escapeHtml(meta.title)}">${escapeHtml(meta.title)}</div>
+      <div class="vrc-video-url" title="${escapeHtml(meta.url)}">${escapeHtml(meta.url)}</div>
+    </div>
+
+    <!-- 画質選択エリア -->
     <div class="vrc-res-section">
       <div class="vrc-res-header-row">
         <span class="vrc-res-label">画質を選択</span>
@@ -135,7 +143,7 @@ function openPopup() {
       </div>
     </div>
 
-    <!-- アクションボタン -->
+    <!-- アクションボタンエリア -->
     <div class="vrc-actions-box">
       <button type="button" class="vrc-action-btn vrc-btn-primary" id="vrc-btn-convert">
         <span class="vrc-btn-icon">🚀</span>
@@ -154,7 +162,14 @@ function openPopup() {
       </button>
     </div>
 
+    <!-- 結果・ステータス動的表示エリア -->
     <div id="vrc-dynamic-area"></div>
+
+    <!-- フッター (サーバー状態) -->
+    <div class="vrc-popup-footer">
+      <span id="vrc-server-status" class="vrc-server-status">● サーバー確認中...</span>
+      <span class="vrc-footer-tag">VRChat 1080p/4K</span>
+    </div>
   `;
 
   // イベント登録
@@ -175,12 +190,56 @@ function openPopup() {
   // 通常リンクコピー
   inPlayerPopup.querySelector("#vrc-btn-clean").addEventListener("click", handleCopyClean);
 
+  // サーバー死活確認
+  pingServer();
+
   // プレイヤー内に配置
   player.appendChild(inPlayerPopup);
 
   // ポップアップ内クリックがプレイヤーに伝播して再生/停止するのを防止
   inPlayerPopup.addEventListener("click", (e) => e.stopPropagation());
   inPlayerPopup.addEventListener("mousedown", (e) => e.stopPropagation());
+}
+
+// 現在の動画メタ情報を取得
+function getCurrentVideoMeta() {
+  let title = "";
+  const titleEl = document.querySelector("h1.ytd-watch-metadata yt-formatted-string") ||
+                  document.querySelector("h1.title yt-formatted-string") ||
+                  document.querySelector(".ytp-title-link");
+  if (titleEl && titleEl.textContent) {
+    title = titleEl.textContent.trim();
+  } else {
+    title = document.title.replace(/ - YouTube$/, "").trim() || "YouTube Video";
+  }
+  const url = window.location.href;
+  return { title, url };
+}
+
+// サーバー状態確認
+function pingServer() {
+  chrome.runtime.sendMessage({ action: "ping" }, (response) => {
+    const statusEl = inPlayerPopup ? inPlayerPopup.querySelector("#vrc-server-status") : null;
+    if (statusEl) {
+      if (response && response.status === "ok") {
+        statusEl.textContent = response.tunnel_url ? "● サーバー稼働中 (トンネル接続済み)" : "● サーバー稼働中 (ローカル8000)";
+        statusEl.style.color = "#10b981";
+      } else {
+        statusEl.textContent = "● サーバー未検出";
+        statusEl.style.color = "#f59e0b";
+      }
+    }
+  });
+}
+
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function closePopup() {
@@ -270,10 +329,31 @@ async function handleConvertHq() {
           await copyToClipboard(response.stream_url);
           dynamicArea.innerHTML = `
             <div class="vrc-result-box">
-              <div class="vrc-result-header">✓ コピー完了 (${resName})</div>
-              <div class="vrc-result-msg">VRChat内のプレイヤーにペーストしてください！</div>
+              <div class="vrc-result-header">
+                <span class="vrc-success-badge">✓ コピー完了</span>
+                <span class="vrc-quality-label">${resName} (${response.quality || "VRChat最適化"})</span>
+              </div>
+              <div class="vrc-result-msg">VRChat内の動画プレイヤーにペーストしてください！</div>
+              <div class="vrc-url-copy-box">
+                <input type="text" class="vrc-url-input" id="vrc-result-input" readonly value="${escapeHtml(response.stream_url)}">
+                <button type="button" class="vrc-btn-copy-small" id="vrc-btn-recopy">コピー</button>
+              </div>
+              <div class="vrc-result-meta">※ AVPro Video (VRChat) 互換ストリーム | Cloudflareトンネル経由</div>
             </div>
           `;
+
+          const input = dynamicArea.querySelector("#vrc-result-input");
+          const copyBtn = dynamicArea.querySelector("#vrc-btn-recopy");
+          if (input) {
+            input.addEventListener("click", () => input.select());
+          }
+          if (copyBtn && input) {
+            copyBtn.addEventListener("click", async () => {
+              await copyToClipboard(input.value);
+              copyBtn.textContent = "済!";
+              setTimeout(() => { if (copyBtn) copyBtn.textContent = "コピー"; }, 1500);
+            });
+          }
         }
       }
     );
@@ -306,10 +386,31 @@ async function handleCopyClean() {
 
   dynamicArea.innerHTML = `
     <div class="vrc-result-box">
-      <div class="vrc-result-header">✓ 通常リンクをコピー完了</div>
+      <div class="vrc-result-header">
+        <span class="vrc-success-badge">✓ コピー完了</span>
+        <span class="vrc-quality-label">通常リンク (全員同期)</span>
+      </div>
       <div class="vrc-result-msg">Publicインスタンス等で全員に同期されます。</div>
+      <div class="vrc-url-copy-box">
+        <input type="text" class="vrc-url-input" id="vrc-clean-result-input" readonly value="${escapeHtml(cleanUrl)}">
+        <button type="button" class="vrc-btn-copy-small" id="vrc-clean-btn-recopy">コピー</button>
+      </div>
+      <div class="vrc-result-meta">※ 余計なパラメータを除去した標準YouTubeリンクです。</div>
     </div>
   `;
+
+  const input = dynamicArea.querySelector("#vrc-clean-result-input");
+  const copyBtn = dynamicArea.querySelector("#vrc-clean-btn-recopy");
+  if (input) {
+    input.addEventListener("click", () => input.select());
+  }
+  if (copyBtn && input) {
+    copyBtn.addEventListener("click", async () => {
+      await copyToClipboard(input.value);
+      copyBtn.textContent = "済!";
+      setTimeout(() => { if (copyBtn) copyBtn.textContent = "コピー"; }, 1500);
+    });
+  }
 }
 
 // クリップボードコピー
