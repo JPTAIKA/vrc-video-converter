@@ -1,5 +1,6 @@
 fastapi>=0.110.0
 uvicorn[standard]>=0.28.0
 yt-dlp>=2024.03.10
+yt-dlp-ejs
 pydantic>=2.6.0
 pydantic-settings>=2.2.0
