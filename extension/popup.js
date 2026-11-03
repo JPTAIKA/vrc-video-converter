@@ -1,5 +1,6 @@
 let currentVideoUrl = null;
 let currentVideoId = null;
+let selectedResolution = "1080";
 
 // DOM要素
 const elements = {
@@ -7,6 +8,9 @@ const elements = {
   youtubeActiveBox: document.getElementById("youtubeActiveBox"),
   videoTitle: document.getElementById("videoTitle"),
   videoUrl: document.getElementById("videoUrl"),
+  resBadge: document.getElementById("resBadge"),
+  btnResLabel: document.getElementById("btnResLabel"),
+  pillBtns: document.querySelectorAll(".pill-btn"),
   btnHqConvert: document.getElementById("btnHqConvert"),
   btnCleanConvert: document.getElementById("btnCleanConvert"),
   loadingBox: document.getElementById("loadingBox"),
@@ -25,6 +29,22 @@ const elements = {
 
 // 初期化
 document.addEventListener("DOMContentLoaded", async () => {
+  // 保存された解像度設定を復元
+  chrome.storage.local.get(["selectedResolution"], (result) => {
+    if (result.selectedResolution) {
+      applyResolution(result.selectedResolution);
+    }
+  });
+
+  // ピルボタンのクリックイベント
+  elements.pillBtns.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const res = btn.getAttribute("data-res");
+      applyResolution(res);
+      chrome.storage.local.set({ selectedResolution: res });
+    });
+  });
+
   // 現在のアクティブタブを取得
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   if (tab && isYouTubeUrl(tab.url)) {
@@ -108,20 +128,41 @@ function pingNativeHost() {
   }
 }
 
-// 1. 高画質 (1080p) 変換ハンドラ - Native Messagingで完全自動実行
+// 解像度の適用
+function applyResolution(res) {
+  selectedResolution = res;
+  elements.pillBtns.forEach((b) => {
+    if (b.getAttribute("data-res") === res) {
+      b.classList.add("active");
+    } else {
+      b.classList.remove("active");
+    }
+  });
+
+  const labels = {
+    "1080": "1080p 最高画質",
+    "720": "720p 高画質",
+    "480": "480p 標準",
+    "360": "360p 軽量"
+  };
+  if (elements.resBadge) elements.resBadge.textContent = labels[res] || `${res}p`;
+  if (elements.btnResLabel) elements.btnResLabel.textContent = `${res}p`;
+}
+
+// 1. 高画質/指定解像度 変換ハンドラ - Native Messagingで完全自動実行
 async function handleHqConvert() {
   if (!currentVideoUrl) return;
 
   hideBoxes();
   elements.loadingBox.classList.remove("hidden");
-  elements.loadingText.textContent = "1080p高画質ストリームを生成中...";
-  elements.loadingSubtext.textContent = "※ Chromeが裏で自動処理しています (約3〜5秒)";
+  elements.loadingText.textContent = `${selectedResolution}p ストリームを生成中...`;
+  elements.loadingSubtext.textContent = `※ ${selectedResolution}p 映像と音声を高速結合しています (約2〜5秒)`;
   elements.btnHqConvert.disabled = true;
 
   try {
     chrome.runtime.sendNativeMessage(
       "vrc_video_converter",
-      { url: currentVideoUrl, mode: "hq" },
+      { url: currentVideoUrl, mode: "hq", resolution: selectedResolution },
       async (response) => {
         elements.loadingBox.classList.add("hidden");
         elements.btnHqConvert.disabled = false;
@@ -139,13 +180,13 @@ async function handleHqConvert() {
 
         if (response.status === "success" && response.stream_url) {
           displaySuccess({
-            quality: "1080p Full HD (最高画質)",
+            quality: `${selectedResolution}p (VRChat最適化)`,
             stream_url: response.stream_url,
-            meta: "※ 1080p高画質ストリームです。VRChatプレイヤーに貼り付けて再生してください！"
+            meta: `※ ${selectedResolution}p ストリームです。VRChatプレイヤーに貼り付けて再生してください！`
           });
           await copyToClipboard(response.stream_url);
         } else {
-          displayError(response.detail || "1080p生成に失敗しました。");
+          displayError(response.detail || `${selectedResolution}p 生成に失敗しました。`);
         }
       }
     );

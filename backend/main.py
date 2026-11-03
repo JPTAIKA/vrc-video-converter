@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response, StreamingResponse
+from typing import Optional
 from pydantic import BaseModel, Field
 
 from config import settings
@@ -166,6 +167,7 @@ app.add_middleware(
 class ConvertRequest(BaseModel):
     url: str = Field(..., description="YouTubeの動画URL")
     mode: str = Field(default="quick", description="変換モード ('quick' または 'hq')")
+    resolution: Optional[str] = Field(default="1080", description="希望解像度 ('1080', '720', '480', '360')")
 
 
 @app.get("/health")
@@ -297,13 +299,14 @@ async def convert_video(req: ConvertRequest, request: Request):
     # 3. モードに応じた処理
     if req.mode == "hq":
         # 【高画質モード】一時ダウンロード・多重化
-        result = await download_high_quality(canonical_url, video_id)
+        target_res = req.resolution or "1080"
+        result = await download_high_quality(canonical_url, video_id, target_res)
         stream_url = f"{base_url}/stream/{result['file_id']}.mp4"
         return {
             "status": "success",
             "mode": "hq",
             "title": result.get("title", ""),
-            "quality": result.get("quality", "1080p High Quality"),
+            "quality": result.get("quality", f"{target_res}p"),
             "stream_url": stream_url,
             "expires_in": settings.CACHE_TTL_SECONDS,
             "cached": result.get("cached", False)
@@ -323,7 +326,7 @@ async def convert_video(req: ConvertRequest, request: Request):
         }
 
 
-@app.get("/stream/{file_id}.mp4")
+@app.api_route("/stream/{file_id}.mp4", methods=["GET", "HEAD"])
 async def stream_video(file_id: str, request: Request):
     """
     VRChatプレイヤー (AVPro / Unity Video) が要求する
@@ -377,15 +380,11 @@ async def stream_video(file_id: str, request: Request):
             "Access-Control-Allow-Origin": "*",
             "Cache-Control": "public, max-age=3600"
         }
+        if request.method == "HEAD":
+            return Response(status_code=206, headers=headers)
         return StreamingResponse(iterfile(), status_code=206, headers=headers)
 
     # Rangeヘッダーがない場合 (全ファイル返却)
-    def iter_full():
-        with open(file_path, "rb") as f:
-            chunk_size = 1024 * 1024
-            while chunk := f.read(chunk_size):
-                yield chunk
-
     headers = {
         "Accept-Ranges": "bytes",
         "Content-Length": str(file_size),
@@ -393,6 +392,15 @@ async def stream_video(file_id: str, request: Request):
         "Access-Control-Allow-Origin": "*",
         "Cache-Control": "public, max-age=3600"
     }
+    if request.method == "HEAD":
+        return Response(status_code=200, headers=headers)
+
+    def iter_full():
+        with open(file_path, "rb") as f:
+            chunk_size = 1024 * 1024
+            while chunk := f.read(chunk_size):
+                yield chunk
+
     return StreamingResponse(iter_full(), status_code=200, headers=headers)
 
 

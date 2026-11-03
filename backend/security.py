@@ -6,7 +6,7 @@ from config import settings
 
 # YouTubeのVideo IDは英数字と一部記号(-_)で構成される11文字
 YOUTUBE_VIDEO_ID_REGEX = re.compile(r"^[a-zA-Z0-9_-]{11}$")
-FILE_ID_REGEX = re.compile(r"^[a-zA-Z0-9_-]{11}_[a-zA-Z0-9]+$")
+FILE_ID_REGEX = re.compile(r"^[a-zA-Z0-9_-]{11}_[a-zA-Z0-9_]+$")
 
 def extract_and_validate_youtube_url(url: str) -> tuple[str, str]:
     """

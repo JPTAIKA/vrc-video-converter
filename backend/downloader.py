@@ -78,14 +78,19 @@ def get_quick_stream_info(canonical_url: str) -> dict:
         raise HTTPException(status_code=502, detail=f"YouTubeからの取得に失敗しました: {str(e)[:100]}")
 
 
-async def download_high_quality(canonical_url: str, video_id: str) -> dict:
+async def download_high_quality(canonical_url: str, video_id: str, resolution: str = "1080") -> dict:
     """
-    【高画質モード (1080p対応)】
-    YouTubeの1080p以上は映像と音声が分離しているため、
-    サーバー側で一時的に結合(mux)してMP4として保存し、VRChat向けストリームとして提供します。
+    【高画質モード (解像度指定対応)】
+    YouTubeの各画質に合わせて映像と音声をサーバー側で一時結合(mux)し、
+    VRChat向けストリームとして提供します。
     """
+    try:
+        res_int = int(resolution)
+    except Exception:
+        res_int = 1080
+
     # 既存の有効なキャッシュがあるか確認
-    pattern = os.path.join(settings.CACHE_DIR, f"{video_id}_*.mp4")
+    pattern = os.path.join(settings.CACHE_DIR, f"{video_id}_{res_int}p_*.mp4")
     existing_files = glob.glob(pattern)
     now = time.time()
     for f in existing_files:
@@ -95,6 +100,7 @@ async def download_high_quality(canonical_url: str, video_id: str) -> dict:
             return {
                 "file_id": file_id,
                 "cached": True,
+                "quality": f"{res_int}p",
                 "mode": "hq"
             }
 
@@ -103,15 +109,23 @@ async def download_high_quality(canonical_url: str, video_id: str) -> dict:
         # キャッシュ容量の点検と掃除
         clean_expired_cache()
 
-        # 一時ファイル用のユニークID
-        hash_suffix = hashlib.md5(f"{video_id}_{time.time()}".encode()).hexdigest()[:8]
-        file_id = f"{video_id}_{hash_suffix}"
+        # 一時ファイル用のユニークID (解像度付き)
+        hash_suffix = hashlib.md5(f"{video_id}_{res_int}_{time.time()}".encode()).hexdigest()[:8]
+        file_id = f"{video_id}_{res_int}p_{hash_suffix}"
         output_template = os.path.join(settings.CACHE_DIR, f"{file_id}.%(ext)s")
+
+        format_spec = (
+            f'bestvideo[height<={res_int}][vcodec^=avc1]+bestaudio[acodec^=mp4a]/'
+            f'bestvideo[height<={res_int}][vcodec^=avc]+bestaudio[ext=m4a]/'
+            f'bestvideo[height<={res_int}][ext=mp4]+bestaudio[ext=m4a]/'
+            f'best[height<={res_int}][ext=mp4]/'
+            f'best[height<={res_int}]/best'
+        )
 
         ydl_opts = {
             'http_headers': COMMON_HEADERS,
             # VRChatプレイヤー (AVPro / Unity Video) 互換性のため H.264 (avc1) + AAC (mp4a) を最優先
-            'format': 'bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[height<=1080][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best',
+            'format': format_spec,
             'merge_output_format': 'mp4',
             'outtmpl': output_template,
             'postprocessor_args': {
@@ -172,7 +186,7 @@ async def download_high_quality(canonical_url: str, video_id: str) -> dict:
             "title": info.get('title', 'Unknown Video'),
             "duration": info.get('duration', 0),
             "file_id": file_id,
-            "quality": "1080p High Quality",
+            "quality": f"{res_int}p",
             "cached": False,
             "mode": "hq"
         }

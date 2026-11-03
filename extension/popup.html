@@ -36,14 +36,40 @@
       </div>
     </section>
 
+    <!-- 画質選択エリア -->
+    <section id="resolutionSection" class="card resolution-card">
+      <div class="card-header-row">
+        <span class="section-label">画質を選択</span>
+        <span id="resBadge" class="res-badge">1080p 最高画質</span>
+      </div>
+      <div class="quality-pills">
+        <button type="button" class="pill-btn active" data-res="1080">
+          <span class="pill-title">1080p</span>
+          <span class="pill-sub">FHD</span>
+        </button>
+        <button type="button" class="pill-btn" data-res="720">
+          <span class="pill-title">720p</span>
+          <span class="pill-sub">HD</span>
+        </button>
+        <button type="button" class="pill-btn" data-res="480">
+          <span class="pill-title">480p</span>
+          <span class="pill-sub">SD</span>
+        </button>
+        <button type="button" class="pill-btn" data-res="360">
+          <span class="pill-title">360p</span>
+          <span class="pill-sub">軽量</span>
+        </button>
+      </div>
+    </section>
+
     <!-- アクションボタンエリア -->
     <section id="actionSection" class="action-grid">
-      <!-- 1. 高画質モード (1080p) - 本命機能 -->
+      <!-- 1. 高画質モード (選択した解像度) -->
       <button id="btnHqConvert" class="btn btn-primary">
         <div class="btn-icon">🚀</div>
         <div class="btn-text">
-          <span class="btn-title">高画質 (1080p) 変換</span>
-          <span class="btn-desc">最高画質FHD・映像+音声多重化</span>
+          <span class="btn-title"><span id="btnResLabel">1080p</span> 変換してコピー</span>
+          <span class="btn-desc">映像+音声多重化・VRChat高速ストリーム</span>
         </div>
       </button>
 
@@ -51,8 +77,8 @@
       <button id="btnCleanConvert" class="btn btn-secondary">
         <div class="btn-icon">🌐</div>
         <div class="btn-text">
-          <span class="btn-title">通常リンク変換 (全員同期)</span>
-          <span class="btn-desc">パラメータ除去・サーバー不要</span>
+          <span class="btn-title">通常リンク (全員同期)</span>
+          <span class="btn-desc">Publicインスタンス向け・標準画質</span>
         </div>
       </button>
     </section>
