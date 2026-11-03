@@ -57,13 +57,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     chrome.runtime.openOptionsPage();
   });
 
-  // サーバー死活チェック & 未起動ならChrome経由で完全自動起動
-  const running = await detectServer();
-  if (!running) {
-    ensureServerViaNative().then(ok => {
-      if (ok) detectServer();
-    });
-  }
+  // サーバー状態の確認
+  await detectServer();
 });
 
 // YouTube URLの判定
@@ -100,20 +95,40 @@ function extractVideoId(url) {
   }
 }
 
+// サーバー待機
+async function waitForServerReady(url, maxAttempts = 12) {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 1000);
+      const res = await fetch(`${url}/health`, { signal: controller.signal });
+      clearTimeout(timeout);
+      if (res.ok) return true;
+    } catch (e) {}
+    await new Promise(r => setTimeout(r, 500));
+  }
+  return false;
+}
+
 // Native MessagingでChromeから直接バックエンドを自動起動
 function ensureServerViaNative() {
   return new Promise((resolve) => {
     try {
-      chrome.runtime.sendNativeMessage("vrc_video_converter", { action: "ensure_server" }, (response) => {
+      chrome.runtime.sendNativeMessage("vrc_video_converter", { action: "ensure_server" }, async (response) => {
         if (chrome.runtime.lastError) {
+          console.warn("Native Messaging error:", chrome.runtime.lastError.message);
           resolve(false);
-        } else if (response && response.status === "ready") {
-          resolve(true);
+          return;
+        }
+        if (response && response.status === "ready") {
+          const ready = await waitForServerReady(LOCAL_SERVER_URL);
+          resolve(ready);
         } else {
           resolve(false);
         }
       });
     } catch (e) {
+      console.warn("Native error:", e);
       resolve(false);
     }
   });
@@ -123,37 +138,21 @@ function ensureServerViaNative() {
 async function detectServer() {
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1200);
+    const timeout = setTimeout(() => controller.abort(), 1000);
     const res = await fetch(`${LOCAL_SERVER_URL}/health`, { signal: controller.signal });
     clearTimeout(timeout);
     if (res.ok) {
       activeServerUrl = LOCAL_SERVER_URL;
       isLocalServerRunning = true;
-      elements.serverStatusText.textContent = "● 1080pサーバー稼働中 (自動連動)";
+      elements.serverStatusText.textContent = "● 1080pサーバー準備完了";
       elements.serverStatusText.style.color = "#10b981";
       return true;
     }
   } catch (e) {}
 
-  // クラウドサーバー確認 (フォールバック)
-  try {
-    const stored = await chrome.storage.sync.get(["serverUrl"]);
-    const remoteUrl = (stored.serverUrl || REMOTE_SERVER_URL).replace(/\/+$/, "");
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1500);
-    const res = await fetch(`${remoteUrl}/health`, { signal: controller.signal });
-    clearTimeout(timeout);
-    if (res.ok) {
-      activeServerUrl = remoteUrl;
-      elements.serverStatusText.textContent = `● クラウドサーバー接続中 (${new URL(remoteUrl).hostname})`;
-      elements.serverStatusText.style.color = "#06b6d4";
-      return true;
-    }
-  } catch (e) {}
-
   isLocalServerRunning = false;
-  elements.serverStatusText.textContent = "○ サーバー待機中 (ボタンクリックで自動起動)";
-  elements.serverStatusText.style.color = "#94a3b8";
+  elements.serverStatusText.textContent = "● クリック時に自動起動します";
+  elements.serverStatusText.style.color = "#06b6d4";
   return false;
 }
 
@@ -163,23 +162,28 @@ async function handleHqConvert() {
 
   hideBoxes();
   elements.loadingBox.classList.remove("hidden");
-  elements.loadingText.textContent = "1080p高画質ストリームを生成中...";
-  elements.loadingSubtext.textContent = "※ 映像と音声を高速結合しています (約3〜5秒)";
+  elements.loadingText.textContent = "1080p変換エンジンを準備中...";
+  elements.loadingSubtext.textContent = "※ Chromeが自動起動しています (約3〜5秒)";
 
   try {
-    // サーバーがまだ応答していない場合、Chromeから自動起動を指示
+    // サーバーがまだ応答していない場合、Chromeのネイティブ機能で自動起動
     if (!isLocalServerRunning) {
-      elements.loadingText.textContent = "1080p変換エンジンを自動起動中...";
       const booted = await ensureServerViaNative();
       if (booted) {
         isLocalServerRunning = true;
         activeServerUrl = LOCAL_SERVER_URL;
-        elements.loadingText.textContent = "1080p高画質ストリームを生成中...";
+        elements.serverStatusText.textContent = "● 1080pサーバー準備完了";
+        elements.serverStatusText.style.color = "#10b981";
+      } else {
+        throw new Error("自動起動エンジンの応答がありません。chrome://extensions で拡張機能の更新（🔄）を押してみてください。");
       }
     }
 
+    elements.loadingText.textContent = "1080p高画質ストリームを生成中...";
+    elements.loadingSubtext.textContent = "※ 映像と音声を高速結合中 (約3〜5秒)";
+
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 45000);
+    const timeout = setTimeout(() => controller.abort(), 60000);
 
     const res = await fetch(`${activeServerUrl}/api/convert`, {
       method: "POST",

@@ -1,7 +1,7 @@
 {
   "name": "vrc_video_converter",
   "description": "VRChat 1080p Video Converter Native Host",
-  "path": "C:\\Users\\TAIKA\\.gemini\\antigravity\\scratch\\vrc-video-converter\\backend\\native_host.bat",
+  "path": "C:\\Users\\TAIKA\\.gemini\\antigravity\\scratch\\vrc-video-converter\\backend\\native_host.exe",
   "type": "stdio",
   "allowed_origins": [
     "chrome-extension://dngpggloijbmjhllaldcjigicncoecfg/"
