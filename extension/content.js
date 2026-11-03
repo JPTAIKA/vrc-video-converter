@@ -221,12 +221,12 @@ function pingServer() {
   chrome.runtime.sendMessage({ action: "ping" }, (response) => {
     const statusEl = inPlayerPopup ? inPlayerPopup.querySelector("#vrc-server-status") : null;
     if (statusEl) {
-      if (response && response.status === "ok") {
-        statusEl.textContent = response.tunnel_url ? "● サーバー稼働中 (トンネル接続済み)" : "● サーバー稼働中 (ローカル8000)";
+      if (response && (response.status === "ready" || response.status === "ok")) {
+        statusEl.textContent = "● 1080pエンジン 自動稼働中 (準備完了)";
         statusEl.style.color = "#10b981";
       } else {
-        statusEl.textContent = "● サーバー未検出";
-        statusEl.style.color = "#f59e0b";
+        statusEl.textContent = "● サーバー確認中...";
+        statusEl.style.color = "#94a3b8";
       }
     }
   });
@@ -326,6 +326,11 @@ async function handleConvertHq() {
         }
 
         if (response.status === "success" && response.stream_url) {
+          const statusEl = inPlayerPopup ? inPlayerPopup.querySelector("#vrc-server-status") : null;
+          if (statusEl) {
+            statusEl.textContent = "● 1080pエンジン 自動稼働中 (準備完了)";
+            statusEl.style.color = "#10b981";
+          }
           await copyToClipboard(response.stream_url);
           dynamicArea.innerHTML = `
             <div class="vrc-result-box">
