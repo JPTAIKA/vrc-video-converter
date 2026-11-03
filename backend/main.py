@@ -73,7 +73,7 @@ class ConvertRequest(BaseModel):
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "vrc-video-converter", "version": "1.0.8"}
+    return {"status": "ok", "service": "vrc-video-converter", "version": "1.0.9"}
 
 @app.get("/api/debug_cookies")
 def debug_cookies():
@@ -96,25 +96,42 @@ def debug_cookies():
         "first_line_sample": first_few_chars
     }
 
-@app.get("/api/test_clients")
-def test_clients(v: str = "OWDcn7hl16A"):
-    import yt_dlp
-    results = {}
-    clients = ['ios', 'android', 'mweb', 'tv', 'web_embedded', 'android_vr', 'visionos']
+@app.get("/api/debug_download")
+def debug_download(v: str = "OWDcn7hl16A"):
+    import yt_dlp, traceback
     url = f"https://www.youtube.com/watch?v={v}"
-    for c in clients:
-        ydl_opts = {
-            'extractor_args': {'youtube': {'player_client': [c]}},
+    
+    # テスト1: Cookieあり、デフォルトクライアント
+    res1 = {}
+    try:
+        opts1 = {
+            'cookiefile': settings.COOKIES_FILE if os.path.exists(settings.COOKIES_FILE) else None,
+            'format': 'bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/best',
             'quiet': True,
-            'skip_download': True
+            'skip_download': True,
         }
-        try:
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = ydl.extract_info(url, download=False)
-                results[c] = f"SUCCESS (formats: {len(info.get('formats', []))})"
-        except Exception as e:
-            results[c] = f"FAIL: {str(e)[:60]}"
-    return results
+        with yt_dlp.YoutubeDL(opts1) as ydl:
+            info = ydl.extract_info(url, download=False)
+            res1 = {"status": "ok", "format": info.get('format_id'), "vcodec": info.get('vcodec')}
+    except Exception as e:
+        res1 = {"status": "error", "error": str(e)[:120], "trace": traceback.format_exc()[-200:]}
+
+    # テスト2: Cookieなし、visionos
+    res2 = {}
+    try:
+        opts2 = {
+            'extractor_args': {'youtube': {'player_client': ['visionos']}},
+            'format': 'bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/best',
+            'quiet': True,
+            'skip_download': True,
+        }
+        with yt_dlp.YoutubeDL(opts2) as ydl:
+            info = ydl.extract_info(url, download=False)
+            res2 = {"status": "ok", "format": info.get('format_id'), "vcodec": info.get('vcodec')}
+    except Exception as e:
+        res2 = {"status": "error", "error": str(e)[:120], "trace": traceback.format_exc()[-200:]}
+
+    return {"with_cookie": res1, "visionos_no_cookie": res2}
 
 
 @app.post("/api/convert")
