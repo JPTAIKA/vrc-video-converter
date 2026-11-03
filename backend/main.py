@@ -73,7 +73,7 @@ class ConvertRequest(BaseModel):
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "vrc-video-converter", "version": "1.0.9"}
+    return {"status": "ok", "service": "vrc-video-converter", "version": "1.1.0"}
 
 @app.get("/api/debug_cookies")
 def debug_cookies():

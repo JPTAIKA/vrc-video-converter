@@ -1,13 +1,13 @@
 FROM python:3.11-slim
 
-# ffmpeg と Deno (YouTube EJSチャレンジ解決用ランタイム) をインストール
+# ffmpeg と必要ツールをインストール
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends ffmpeg curl unzip ca-certificates && \
-    curl -fsSL https://deno.land/install.sh | sh && \
+    apt-get install -y --no-install-recommends ffmpeg curl ca-certificates && \
     rm -rf /var/lib/apt/lists/*
 
-ENV DENO_INSTALL="/root/.deno"
-ENV PATH="$DENO_INSTALL/bin:$PATH"
+# PO Token (Proof-of-Origin) 自動生成バイナリ (Rust製) を配置
+RUN curl -L -o /usr/local/bin/bgutil-pot https://github.com/jim60105/bgutil-ytdlp-pot-provider-rs/releases/download/v0.8.1/bgutil-pot-linux-x86_64 && \
+    chmod +x /usr/local/bin/bgutil-pot
 
 WORKDIR /app
 
@@ -16,9 +16,9 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# キャッシュディレクトリのパーミッション確保
 RUN mkdir -p /app/cache
+RUN chmod +x entrypoint.sh
 
 EXPOSE 8000
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["./entrypoint.sh"]
