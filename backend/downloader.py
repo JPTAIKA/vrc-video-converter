@@ -25,7 +25,8 @@ def get_quick_stream_info(canonical_url: str) -> dict:
     ydl_opts = {
         'extractor_args': {
             'youtube': {
-                'player_client': ['visionos', 'android_vr', 'web']
+                # webクライアントを除外してvisionos/android_vrのみを使用（クラウドIPのBot判定を回避）
+                'player_client': ['visionos', 'android_vr']
             }
         },
         'format': 'best[ext=mp4]/22/18/best', # 720p以下の映像+音声が結合済みの直リンク優先
@@ -96,7 +97,8 @@ async def download_high_quality(canonical_url: str, video_id: str) -> dict:
         ydl_opts = {
             'extractor_args': {
                 'youtube': {
-                    'player_client': ['visionos', 'android_vr', 'web']
+                    # webクライアントを除外してvisionos/android_vrのみを使用（クラウドIPのBot判定を回避）
+                    'player_client': ['visionos', 'android_vr']
                 }
             },
             # 1080p以下で最良の映像 + 最良の音声をダウンロードしてMP4に多重化
