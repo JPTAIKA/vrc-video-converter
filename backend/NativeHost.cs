@@ -4,6 +4,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading;
+using System.Management;
 
 namespace VrcNativeHost
 {
@@ -145,14 +146,27 @@ namespace VrcNativeHost
 
             try
             {
-                ProcessStartInfo psi = new ProcessStartInfo();
-                psi.FileName = pythonExe;
-                psi.Arguments = "main.py";
-                psi.WorkingDirectory = backendDir;
-                psi.CreateNoWindow = true;
-                psi.UseShellExecute = false;
-
-                Process.Start(psi);
+                // ChromeのNative Messagingプロセス(Job Object)の道連れ終了を防ぐため、
+                // WMI (Win32_Process.Create) を使用して独立したプロセスとしてバックグラウンド起動する
+                try
+                {
+                    ManagementClass processClass = new ManagementClass("Win32_Process");
+                    ManagementBaseObject inParams = processClass.GetMethodParameters("Create");
+                    inParams["CommandLine"] = "\"" + pythonExe + "\" main.py";
+                    inParams["CurrentDirectory"] = backendDir;
+                    processClass.InvokeMethod("Create", inParams, null);
+                }
+                catch
+                {
+                    // WMI失敗時のフォールバック
+                    ProcessStartInfo psi = new ProcessStartInfo();
+                    psi.FileName = pythonExe;
+                    psi.Arguments = "main.py";
+                    psi.WorkingDirectory = backendDir;
+                    psi.CreateNoWindow = true;
+                    psi.UseShellExecute = false;
+                    Process.Start(psi);
+                }
 
                 for (int i = 0; i < 24; i++)
                 {
