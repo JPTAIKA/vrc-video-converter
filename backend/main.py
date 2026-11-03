@@ -73,7 +73,28 @@ class ConvertRequest(BaseModel):
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "vrc-video-converter", "version": "1.0.6"}
+    return {"status": "ok", "service": "vrc-video-converter", "version": "1.0.7"}
+
+@app.get("/api/debug_cookies")
+def debug_cookies():
+    cookie_file_exists = os.path.exists(settings.COOKIES_FILE)
+    lines_count = 0
+    first_few_chars = ""
+    if cookie_file_exists:
+        try:
+            with open(settings.COOKIES_FILE, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+                lines_count = len(lines)
+                first_few_chars = lines[0][:40] if lines else ""
+        except Exception as e:
+            first_few_chars = str(e)
+    return {
+        "env_var_set": bool(settings.YOUTUBE_COOKIES),
+        "env_var_len": len(settings.YOUTUBE_COOKIES),
+        "file_exists": cookie_file_exists,
+        "file_lines": lines_count,
+        "first_line_sample": first_few_chars
+    }
 
 @app.get("/api/test_clients")
 def test_clients(v: str = "OWDcn7hl16A"):
