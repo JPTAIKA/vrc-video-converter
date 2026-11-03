@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VRChat 動画リンク変換</title>
+  <title>VRChat 1080p 動画リンク変換</title>
   <link rel="stylesheet" href="popup.css">
 </head>
 <body>
@@ -11,10 +11,10 @@
     <!-- ヘッダー -->
     <header class="header">
       <div class="logo-area">
-        <span class="logo-badge">VRC</span>
+        <span class="logo-badge">VRC 1080p</span>
         <h1>動画リンク変換</h1>
       </div>
-      <button id="btnOptions" class="icon-button" title="サーバー設定 (任意)" aria-label="設定">
+      <button id="btnOptions" class="icon-button" title="サーバー設定" aria-label="設定">
         ⚙️
       </button>
     </header>
@@ -38,30 +38,21 @@
 
     <!-- アクションボタンエリア -->
     <section id="actionSection" class="action-grid">
-      <!-- 1. VRChat標準リンク (一番おすすめ / 全員再生可能 / サーバー不要) -->
-      <button id="btnCleanConvert" class="btn btn-primary">
-        <div class="btn-icon">🌐</div>
-        <div class="btn-text">
-          <span class="btn-title">VRChat用リンク (全員視聴用)</span>
-          <span class="btn-desc">余計なパラメータを除去・即時コピー</span>
-        </div>
-      </button>
-
-      <!-- 2. 直結ストリーム抽出 (403・Bot拒否回避用 / 拡張機能単体で完結) -->
-      <button id="btnStreamExtract" class="btn btn-secondary">
-        <div class="btn-icon">⚡</div>
-        <div class="btn-text">
-          <span class="btn-title">直結ストリーム (MP4) 抽出</span>
-          <span class="btn-desc">YouTubeのBot拒否を回避 (サーバー不要)</span>
-        </div>
-      </button>
-
-      <!-- 3. 高画質モード (Renderサーバー経由 / 1080p) -->
-      <button id="btnHqConvert" class="btn btn-secondary">
+      <!-- 1. 高画質モード (1080p) - 本命機能 -->
+      <button id="btnHqConvert" class="btn btn-primary">
         <div class="btn-icon">🚀</div>
         <div class="btn-text">
-          <span class="btn-title">高画質変換 (1080p・サーバー)</span>
-          <span class="btn-desc">映像+音声結合 (クラウドサーバー経由)</span>
+          <span class="btn-title">高画質 (1080p) 変換</span>
+          <span class="btn-desc">最高画質FHD・映像+音声多重化</span>
+        </div>
+      </button>
+
+      <!-- 2. VRChat標準リンク (通常モード) -->
+      <button id="btnCleanConvert" class="btn btn-secondary">
+        <div class="btn-icon">🌐</div>
+        <div class="btn-text">
+          <span class="btn-title">通常リンク変換 (全員同期)</span>
+          <span class="btn-desc">パラメータ除去・サーバー不要</span>
         </div>
       </button>
     </section>
@@ -69,8 +60,8 @@
     <!-- 処理中ステータス -->
     <div id="loadingBox" class="card status-card hidden">
       <div class="spinner"></div>
-      <p id="loadingText" class="status-text">処理中... 少々お待ちください</p>
-      <span id="loadingSubtext" class="status-subtext"></span>
+      <p id="loadingText" class="status-text">1080p高画質ストリームを生成中...</p>
+      <span id="loadingSubtext" class="status-subtext">※ 映像と音声を高速結合しています (約3〜5秒)</span>
     </div>
 
     <!-- 結果表示エリア -->
@@ -79,7 +70,7 @@
         <span class="badge success-badge">✓ コピー完了</span>
         <span id="resultQuality" class="quality-label"></span>
       </div>
-      <p class="copy-notice">VRChat内の動画プレイヤーにペーストできます！</p>
+      <p class="copy-notice">VRChat内の動画プレイヤーにペーストしてください！</p>
       
       <div class="url-copy-box">
         <input type="text" id="resultUrlInput" readonly>
@@ -97,7 +88,7 @@
 
     <!-- フッター -->
     <footer class="footer">
-      <span id="serverStatusText">拡張機能単体で動作中 (サーバー不要)</span>
+      <span id="serverStatusText">サーバー確認中...</span>
     </footer>
   </div>
 

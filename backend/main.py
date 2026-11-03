@@ -31,6 +31,34 @@ async def periodic_cache_cleanup():
             print(f"[Cleanup Error] {e}")
 
 
+# Cloudflare Quick Tunnel プロセス (友達との共有用パブリックURL生成)
+tunnel_process = None
+
+def run_cloudflared_tunnel():
+    global tunnel_process
+    cf_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "cloudflared.exe")
+    if os.path.exists(cf_path) and not settings.BASE_URL:
+        import subprocess, re
+        try:
+            flags = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
+            tunnel_process = subprocess.Popen(
+                [cf_path, "tunnel", "--url", f"http://127.0.0.1:{settings.PORT}"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                creationflags=flags
+            )
+            for line in tunnel_process.stderr:
+                if "trycloudflare.com" in line:
+                    m = re.search(r"https://[a-zA-Z0-9-]+\.trycloudflare\.com", line)
+                    if m:
+                        settings.BASE_URL = m.group(0)
+                        print(f"[Tunnel] Public stream URL ready: {settings.BASE_URL}")
+                        break
+        except Exception as e:
+            print(f"[Tunnel Error] {e}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # 起動時: 環境変数にCookieがあればファイルとして書き出し
@@ -59,11 +87,20 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[Plugins Error] {e}")
 
+    # ローカル実行時のCloudflareトンネル起動 (友達共有用)
+    import threading
+    threading.Thread(target=run_cloudflared_tunnel, daemon=True).start()
+
     clean_expired_cache()
     task = asyncio.create_task(periodic_cache_cleanup())
     yield
     # 終了時
     task.cancel()
+    if tunnel_process:
+        try:
+            tunnel_process.terminate()
+        except Exception:
+            pass
 
 
 app = FastAPI(
@@ -307,3 +344,10 @@ async def stream_video(file_id: str, request: Request):
         "Cache-Control": "public, max-age=3600"
     }
     return StreamingResponse(iter_full(), status_code=200, headers=headers)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    print(f"[*] Starting VRChat Video Converter API on {settings.HOST}:{settings.PORT}")
+    uvicorn.run(app, host=settings.HOST, port=settings.PORT, log_level="info")
+

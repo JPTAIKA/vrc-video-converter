@@ -2,7 +2,10 @@ __pycache__/
 *.py[cod]
 *$py.class
 cache/
+backend/cache/
 *.mp4
 .venv/
 env/
 .env
+cookies.txt
+*.exe

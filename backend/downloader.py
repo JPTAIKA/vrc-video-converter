@@ -28,11 +28,6 @@ def get_quick_stream_info(canonical_url: str) -> dict:
     （サーバー負荷・ディスク消費ほぼゼロ、即時返却）
     """
     ydl_opts = {
-        'extractor_args': {
-            'youtubepot-bgutilhttp': {
-                'base_url': 'http://127.0.0.1:4416'
-            }
-        },
         'http_headers': COMMON_HEADERS,
         'format': 'best[ext=mp4][vcodec^=avc1]/best[ext=mp4]/22/18/best', # H.264直リンク優先
         'noplaylist': True,
@@ -40,6 +35,17 @@ def get_quick_stream_info(canonical_url: str) -> dict:
         'no_warnings': True,
         'skip_download': True,
     }
+
+    local_ffmpeg = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ffmpeg.exe")
+    if os.path.exists(local_ffmpeg):
+        ydl_opts['ffmpeg_location'] = local_ffmpeg
+
+    if os.path.exists("/usr/local/bin/bgutil-pot"):
+        ydl_opts['extractor_args'] = {
+            'youtubepot-bgutilhttp': {
+                'base_url': 'http://127.0.0.1:4416'
+            }
+        }
 
     if os.path.exists(settings.COOKIES_FILE):
         ydl_opts['cookiefile'] = settings.COOKIES_FILE
@@ -103,11 +109,6 @@ async def download_high_quality(canonical_url: str, video_id: str) -> dict:
         output_template = os.path.join(settings.CACHE_DIR, f"{file_id}.%(ext)s")
 
         ydl_opts = {
-            'extractor_args': {
-                'youtubepot-bgutilhttp': {
-                    'base_url': 'http://127.0.0.1:4416'
-                }
-            },
             'http_headers': COMMON_HEADERS,
             # VRChatプレイヤー (AVPro / Unity Video) 互換性のため H.264 (avc1) + AAC (mp4a) を最優先
             'format': 'bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[height<=1080][vcodec^=avc]+bestaudio[ext=m4a]/bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best',
@@ -120,8 +121,19 @@ async def download_high_quality(canonical_url: str, video_id: str) -> dict:
             'noplaylist': True,
             'quiet': True,
             'no_warnings': True,
-            'max_filesize': 500 * 1024 * 1024, # 500MB超は拒否 (無料鯖保護)
+            'max_filesize': 500 * 1024 * 1024, # 500MB超は拒否 (保護)
         }
+
+        local_ffmpeg = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ffmpeg.exe")
+        if os.path.exists(local_ffmpeg):
+            ydl_opts['ffmpeg_location'] = local_ffmpeg
+
+        if os.path.exists("/usr/local/bin/bgutil-pot"):
+            ydl_opts['extractor_args'] = {
+                'youtubepot-bgutilhttp': {
+                    'base_url': 'http://127.0.0.1:4416'
+                }
+            }
 
         if os.path.exists(settings.COOKIES_FILE):
             ydl_opts['cookiefile'] = settings.COOKIES_FILE
