@@ -90,7 +90,33 @@ class ConvertRequest(BaseModel):
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "vrc-video-converter", "version": "1.1.2"}
+    return {"status": "ok", "service": "vrc-video-converter", "version": "1.1.3"}
+
+@app.get("/api/debug_download")
+def debug_download(v: str = "OWDcn7hl16A"):
+    import yt_dlp, traceback
+    url = f"https://www.youtube.com/watch?v={v}"
+    
+    # POT Provider 経由のテスト
+    res = {}
+    try:
+        opts = {
+            'extractor_args': {
+                'youtubepot-bgutilhttp': {
+                    'base_url': 'http://127.0.0.1:4416'
+                }
+            },
+            'format': 'bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/best',
+            'quiet': True,
+            'skip_download': True,
+        }
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=False)
+            res = {"status": "ok", "format": info.get('format_id'), "vcodec": info.get('vcodec')}
+    except Exception as e:
+        res = {"status": "error", "error": str(e)[:120], "trace": traceback.format_exc()[-200:]}
+
+    return {"pot_result": res}
 
 @app.get("/api/test_pot")
 def test_pot():
