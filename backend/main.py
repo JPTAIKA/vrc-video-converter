@@ -51,6 +51,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[POT Provider Error] {e}")
 
+    # yt-dlp プラグイン (bgutil-ytdlp-pot-provider) をロード
+    try:
+        import yt_dlp.plugins
+        yt_dlp.plugins.load_all_plugins()
+        print("[Plugins] Loaded all yt-dlp plugins.")
+    except Exception as e:
+        print(f"[Plugins Error] {e}")
+
     clean_expired_cache()
     task = asyncio.create_task(periodic_cache_cleanup())
     yield
@@ -82,7 +90,17 @@ class ConvertRequest(BaseModel):
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "vrc-video-converter", "version": "1.1.1"}
+    return {"status": "ok", "service": "vrc-video-converter", "version": "1.1.2"}
+
+@app.get("/api/test_pot")
+def test_pot():
+    import urllib.request
+    try:
+        # bgutil-pot サーバーへの接続確認
+        res = urllib.request.urlopen("http://127.0.0.1:4416/", timeout=3)
+        return {"pot_server": "running", "status": res.status}
+    except Exception as e:
+        return {"pot_server": "error", "error": str(e)}
 
 @app.get("/api/debug_cookies")
 def debug_cookies():
