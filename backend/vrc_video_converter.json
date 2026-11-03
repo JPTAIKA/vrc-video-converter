@@ -4,6 +4,9 @@
   "path": "C:\\Users\\TAIKA\\.gemini\\antigravity\\scratch\\vrc-video-converter\\backend\\native_host.exe",
   "type": "stdio",
   "allowed_origins": [
-    "chrome-extension://dngpggloijbmjhllaldcjigicncoecfg/"
+    "chrome-extension://dngpggloijbmjhllaldcjigicncoecfg/",
+    "chrome-extension://cpkkdlgpjkbkhjimbnkeonnadjnlmegm/",
+    "chrome-extension://fojgodnomgghdjkfohljapkfbgicddpb/",
+    "chrome-extension://ngpocnceljaodjcaekcebllgfglobfka/"
   ]
 }

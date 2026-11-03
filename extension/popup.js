@@ -1,10 +1,5 @@
-const LOCAL_SERVER_URL = "http://127.0.0.1:8000";
-const REMOTE_SERVER_URL = "https://vrc-video-converter.onrender.com";
-
 let currentVideoUrl = null;
 let currentVideoId = null;
-let activeServerUrl = LOCAL_SERVER_URL;
-let isLocalServerRunning = false;
 
 // DOM要素
 const elements = {
@@ -57,8 +52,8 @@ document.addEventListener("DOMContentLoaded", async () => {
     chrome.runtime.openOptionsPage();
   });
 
-  // サーバー状態の確認
-  await detectServer();
+  // ネイティブエンジンの死活確認 (ping)
+  pingNativeHost();
 });
 
 // YouTube URLの判定
@@ -95,131 +90,69 @@ function extractVideoId(url) {
   }
 }
 
-// サーバー待機
-async function waitForServerReady(url, maxAttempts = 12) {
-  for (let i = 0; i < maxAttempts; i++) {
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 1000);
-      const res = await fetch(`${url}/health`, { signal: controller.signal });
-      clearTimeout(timeout);
-      if (res.ok) return true;
-    } catch (e) {}
-    await new Promise(r => setTimeout(r, 500));
-  }
-  return false;
-}
-
-// Native MessagingでChromeから直接バックエンドを自動起動
-let lastNativeErrorMessage = "";
-
-function ensureServerViaNative() {
-  return new Promise((resolve) => {
-    try {
-      lastNativeErrorMessage = "";
-      chrome.runtime.sendNativeMessage("vrc_video_converter", { action: "ensure_server" }, async (response) => {
-        if (chrome.runtime.lastError) {
-          lastNativeErrorMessage = chrome.runtime.lastError.message || "Unknown error";
-          console.warn("Native Messaging error:", lastNativeErrorMessage);
-          resolve(false);
-          return;
-        }
-        if (response && response.status === "ready") {
-          const ready = await waitForServerReady(LOCAL_SERVER_URL);
-          resolve(ready);
-        } else {
-          lastNativeErrorMessage = "ホストからの応答が不正です: " + JSON.stringify(response);
-          resolve(false);
-        }
-      });
-    } catch (e) {
-      lastNativeErrorMessage = e.message || String(e);
-      console.warn("Native error:", e);
-      resolve(false);
-    }
-  });
-}
-
-// サーバー自動検出
-async function detectServer() {
+// ネイティブ連携の疎通確認
+function pingNativeHost() {
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1000);
-    const res = await fetch(`${LOCAL_SERVER_URL}/health`, { signal: controller.signal });
-    clearTimeout(timeout);
-    if (res.ok) {
-      activeServerUrl = LOCAL_SERVER_URL;
-      isLocalServerRunning = true;
-      elements.serverStatusText.textContent = "● 1080pサーバー準備完了";
-      elements.serverStatusText.style.color = "#10b981";
-      return true;
-    }
-  } catch (e) {}
-
-  isLocalServerRunning = false;
-  elements.serverStatusText.textContent = "● クリック時に自動起動します";
-  elements.serverStatusText.style.color = "#06b6d4";
-  return false;
+    chrome.runtime.sendNativeMessage("vrc_video_converter", { action: "ping" }, (response) => {
+      if (chrome.runtime.lastError) {
+        elements.serverStatusText.textContent = "▲ レジストリ反映待ち (chrome://restart で再起動)";
+        elements.serverStatusText.style.color = "#f59e0b";
+      } else if (response && response.status === "ready") {
+        elements.serverStatusText.textContent = "● 1080pエンジン自動連動中 (準備完了)";
+        elements.serverStatusText.style.color = "#10b981";
+      }
+    });
+  } catch (e) {
+    elements.serverStatusText.textContent = "● 1080pエンジン待機中";
+    elements.serverStatusText.style.color = "#06b6d4";
+  }
 }
 
-// 1. 高画質 (1080p) 変換ハンドラ
+// 1. 高画質 (1080p) 変換ハンドラ - Native Messagingで完全自動実行
 async function handleHqConvert() {
   if (!currentVideoUrl) return;
 
   hideBoxes();
   elements.loadingBox.classList.remove("hidden");
-  elements.loadingText.textContent = "1080p変換エンジンを準備中...";
-  elements.loadingSubtext.textContent = "※ Chromeが自動起動しています (約3〜5秒)";
+  elements.loadingText.textContent = "1080p高画質ストリームを生成中...";
+  elements.loadingSubtext.textContent = "※ Chromeが裏で自動処理しています (約3〜5秒)";
+  elements.btnHqConvert.disabled = true;
 
   try {
-    // サーバーがまだ応答していない場合、Chromeのネイティブ機能で自動起動
-    if (!isLocalServerRunning) {
-      const booted = await ensureServerViaNative();
-      if (booted) {
-        isLocalServerRunning = true;
-        activeServerUrl = LOCAL_SERVER_URL;
-        elements.serverStatusText.textContent = "● 1080pサーバー準備完了";
-        elements.serverStatusText.style.color = "#10b981";
-      } else {
-        const extId = chrome.runtime.id;
-        throw new Error(`自動起動エラー: ${lastNativeErrorMessage || "無応答"}。\n※ レジストリを反映させるため、Chromeのアドレスバーに chrome://restart と入力してEnterを押してください。`);
+    chrome.runtime.sendNativeMessage(
+      "vrc_video_converter",
+      { url: currentVideoUrl, mode: "hq" },
+      async (response) => {
+        elements.loadingBox.classList.add("hidden");
+        elements.btnHqConvert.disabled = false;
+
+        if (chrome.runtime.lastError) {
+          const err = chrome.runtime.lastError.message;
+          displayError(`自動起動エラー: ${err}\n※ レジストリを認識させるため、Chromeのアドレスバーに chrome://restart と入力してEnterを押してください。`);
+          return;
+        }
+
+        if (!response) {
+          displayError("エンジンからの応答がありませんでした。");
+          return;
+        }
+
+        if (response.status === "success" && response.stream_url) {
+          displaySuccess({
+            quality: "1080p Full HD (最高画質)",
+            stream_url: response.stream_url,
+            meta: "※ 1080p高画質ストリームです。VRChatプレイヤーに貼り付けて再生してください！"
+          });
+          await copyToClipboard(response.stream_url);
+        } else {
+          displayError(response.detail || "1080p生成に失敗しました。");
+        }
       }
-    }
-
-    elements.loadingText.textContent = "1080p高画質ストリームを生成中...";
-    elements.loadingSubtext.textContent = "※ 映像と音声を高速結合中 (約3〜5秒)";
-
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
-
-    const res = await fetch(`${activeServerUrl}/api/convert`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        url: currentVideoUrl,
-        mode: "hq"
-      }),
-      signal: controller.signal
-    });
-    clearTimeout(timeout);
-
-    const data = await res.json();
-    if (!res.ok) {
-      throw new Error(data.detail || `エラー (${res.status})`);
-    }
-
-    displaySuccess({
-      quality: "1080p Full HD (最高画質)",
-      stream_url: data.stream_url,
-      meta: "※ 1080p高画質ストリームです。VRChatプレイヤーに貼り付けて再生してください！"
-    });
-
-    await copyToClipboard(data.stream_url);
-
+    );
   } catch (err) {
-    displayError(`高画質変換エラー: ${err.message}`);
-  } finally {
     elements.loadingBox.classList.add("hidden");
+    elements.btnHqConvert.disabled = false;
+    displayError(`エラー: ${err.message}`);
   }
 }
 

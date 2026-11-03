@@ -24,11 +24,7 @@ namespace VrcNativeHost
                     {
                         byte[] lenBytes = new byte[4];
                         int read = stdin.Read(lenBytes, 0, 4);
-                        if (read < 4)
-                        {
-                            // Chromeが切断した（終了）
-                            break;
-                        }
+                        if (read < 4) break;
 
                         int length = BitConverter.ToInt32(lenBytes, 0);
                         if (length <= 0 || length > 1024 * 1024) break;
@@ -44,16 +40,59 @@ namespace VrcNativeHost
 
                         string message = Encoding.UTF8.GetString(buffer, 0, totalRead);
 
-                        // メッセージ処理
+                        // 1. サーバー起動確認
                         bool ready = EnsureServer();
-                        string response = ready ? "{\"status\":\"ready\",\"port\":8000}" : "{\"status\":\"error\"}";
+                        if (!ready)
+                        {
+                            SendJson(stdout, "{\"status\":\"error\",\"detail\":\"1080pサーバーの起動に失敗しました。\"}");
+                            continue;
+                        }
 
-                        byte[] respBytes = Encoding.UTF8.GetBytes(response);
-                        byte[] respLen = BitConverter.GetBytes(respBytes.Length);
+                        // pingまたはensure_serverの場合
+                        if (message.Contains("\"ping\"") || message.Contains("\"ensure_server\""))
+                        {
+                            SendJson(stdout, "{\"status\":\"ready\",\"port\":8000}");
+                            continue;
+                        }
 
-                        stdout.Write(respLen, 0, 4);
-                        stdout.Write(respBytes, 0, respBytes.Length);
-                        stdout.Flush();
+                        // 2. 変換リクエストの転送処理 (C#から127.0.0.1:8000/api/convertへ直接リクエスト)
+                        try
+                        {
+                            HttpWebRequest req = (HttpWebRequest)WebRequest.Create("http://127.0.0.1:8000/api/convert");
+                            req.Method = "POST";
+                            req.ContentType = "application/json";
+                            req.Timeout = 60000;
+
+                            byte[] postBytes = Encoding.UTF8.GetBytes(message);
+                            req.ContentLength = postBytes.Length;
+                            using (Stream reqStream = req.GetRequestStream())
+                            {
+                                reqStream.Write(postBytes, 0, postBytes.Length);
+                            }
+
+                            using (HttpWebResponse res = (HttpWebResponse)req.GetResponse())
+                            using (StreamReader sr = new StreamReader(res.GetResponseStream(), Encoding.UTF8))
+                            {
+                                string resultJson = sr.ReadToEnd();
+                                SendJson(stdout, resultJson);
+                            }
+                        }
+                        catch (WebException wex)
+                        {
+                            string errDetail = wex.Message;
+                            if (wex.Response != null)
+                            {
+                                using (StreamReader sr = new StreamReader(wex.Response.GetResponseStream(), Encoding.UTF8))
+                                {
+                                    errDetail = sr.ReadToEnd();
+                                }
+                            }
+                            SendJson(stdout, "{\"status\":\"error\",\"detail\":" + EscapeJsonString(errDetail) + "}");
+                        }
+                        catch (Exception ex)
+                        {
+                            SendJson(stdout, "{\"status\":\"error\",\"detail\":" + EscapeJsonString(ex.Message) + "}");
+                        }
                     }
                 }
             }
@@ -66,12 +105,27 @@ namespace VrcNativeHost
             }
         }
 
+        static void SendJson(Stream stdout, string json)
+        {
+            byte[] respBytes = Encoding.UTF8.GetBytes(json);
+            byte[] respLen = BitConverter.GetBytes(respBytes.Length);
+            stdout.Write(respLen, 0, 4);
+            stdout.Write(respBytes, 0, respBytes.Length);
+            stdout.Flush();
+        }
+
+        static string EscapeJsonString(string s)
+        {
+            if (s == null) return "\"\"";
+            return "\"" + s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\r", "").Replace("\n", "\\n") + "\"";
+        }
+
         static bool IsServerAlive()
         {
             try
             {
                 HttpWebRequest req = (HttpWebRequest)WebRequest.Create("http://127.0.0.1:8000/health");
-                req.Timeout = 1000;
+                req.Timeout = 800;
                 using (HttpWebResponse res = (HttpWebResponse)req.GetResponse())
                 {
                     return res.StatusCode == HttpStatusCode.OK;
@@ -107,7 +161,7 @@ namespace VrcNativeHost
 
                 serverProc = Process.Start(psi);
 
-                for (int i = 0; i < 20; i++)
+                for (int i = 0; i < 24; i++)
                 {
                     Thread.Sleep(500);
                     if (IsServerAlive()) return true;
@@ -131,7 +185,6 @@ namespace VrcNativeHost
             }
             catch { }
 
-            // 念のためport 8000を解放
             try
             {
                 ProcessStartInfo psi = new ProcessStartInfo();

@@ -1,14 +1,20 @@
 {
   "manifest_version": 3,
-  "name": "VRChat 動画リンク変換 (VRC Video Converter)",
-  "version": "1.0.0",
-  "description": "YouTubeのURLをVRChatで安定再生できる高画質(1080p)または軽量直リンクに変換し、ワンクリックでコピーします。",
+  "name": "VRChat 1080p 動画リンク変換",
+  "version": "1.1.0",
+  "description": "YouTubeのURLをVRChatで安定再生できる1080p高画質または標準形式に自動変換し、ワンクリックでコピーします。",
   "permissions": [
     "activeTab",
     "scripting",
     "storage",
     "clipboardWrite",
     "nativeMessaging"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1/*",
+    "http://localhost/*",
+    "*://*.trycloudflare.com/*",
+    "*://*.onrender.com/*"
   ],
   "action": {
     "default_popup": "popup.html",
