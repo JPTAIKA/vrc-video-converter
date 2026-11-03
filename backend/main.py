@@ -42,6 +42,15 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"[Cookies Error] {e}")
 
+    # bgutil-pot (PO Tokenサーバー) をバックグラウンドで起動
+    try:
+        import subprocess
+        if os.path.exists("/usr/local/bin/bgutil-pot"):
+            subprocess.Popen(["/usr/local/bin/bgutil-pot", "server", "--port", "4416"])
+            print("[POT Provider] Started bgutil-pot server on port 4416.")
+    except Exception as e:
+        print(f"[POT Provider Error] {e}")
+
     clean_expired_cache()
     task = asyncio.create_task(periodic_cache_cleanup())
     yield
@@ -73,7 +82,7 @@ class ConvertRequest(BaseModel):
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok", "service": "vrc-video-converter", "version": "1.1.0"}
+    return {"status": "ok", "service": "vrc-video-converter", "version": "1.1.1"}
 
 @app.get("/api/debug_cookies")
 def debug_cookies():
