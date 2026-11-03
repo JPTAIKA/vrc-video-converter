@@ -111,12 +111,16 @@ async function waitForServerReady(url, maxAttempts = 12) {
 }
 
 // Native MessagingでChromeから直接バックエンドを自動起動
+let lastNativeErrorMessage = "";
+
 function ensureServerViaNative() {
   return new Promise((resolve) => {
     try {
+      lastNativeErrorMessage = "";
       chrome.runtime.sendNativeMessage("vrc_video_converter", { action: "ensure_server" }, async (response) => {
         if (chrome.runtime.lastError) {
-          console.warn("Native Messaging error:", chrome.runtime.lastError.message);
+          lastNativeErrorMessage = chrome.runtime.lastError.message || "Unknown error";
+          console.warn("Native Messaging error:", lastNativeErrorMessage);
           resolve(false);
           return;
         }
@@ -124,10 +128,12 @@ function ensureServerViaNative() {
           const ready = await waitForServerReady(LOCAL_SERVER_URL);
           resolve(ready);
         } else {
+          lastNativeErrorMessage = "ホストからの応答が不正です: " + JSON.stringify(response);
           resolve(false);
         }
       });
     } catch (e) {
+      lastNativeErrorMessage = e.message || String(e);
       console.warn("Native error:", e);
       resolve(false);
     }
@@ -175,7 +181,8 @@ async function handleHqConvert() {
         elements.serverStatusText.textContent = "● 1080pサーバー準備完了";
         elements.serverStatusText.style.color = "#10b981";
       } else {
-        throw new Error("自動起動エンジンの応答がありません。chrome://extensions で拡張機能の更新（🔄）を押してみてください。");
+        const extId = chrome.runtime.id;
+        throw new Error(`自動起動エラー: ${lastNativeErrorMessage || "無応答"}。\n※ レジストリを反映させるため、Chromeのアドレスバーに chrome://restart と入力してEnterを押してください。`);
       }
     }
 
