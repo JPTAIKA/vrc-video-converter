@@ -11,6 +11,13 @@ const elements = {
   resBadge: document.getElementById("resBadge"),
   btnResLabel: document.getElementById("btnResLabel"),
   pillBtns: document.querySelectorAll(".pill-btn"),
+  clipEnable: document.getElementById("clipEnable"),
+  clipInputsBox: document.getElementById("clipInputsBox"),
+  clipBadge: document.getElementById("clipBadge"),
+  clipStart: document.getElementById("clipStart"),
+  clipEnd: document.getElementById("clipEnd"),
+  btnSetStart: document.getElementById("btnSetStart"),
+  btnSetEnd: document.getElementById("btnSetEnd"),
   btnHqConvert: document.getElementById("btnHqConvert"),
   btnCleanConvert: document.getElementById("btnCleanConvert"),
   loadingBox: document.getElementById("loadingBox"),
@@ -43,6 +50,28 @@ document.addEventListener("DOMContentLoaded", async () => {
       applyResolution(res);
       chrome.storage.local.set({ selectedResolution: res });
     });
+  });
+
+  // 区間指定イベント
+  elements.clipEnable.addEventListener("change", async () => {
+    if (elements.clipEnable.checked) {
+      elements.clipInputsBox.classList.remove("hidden");
+      elements.clipBadge.classList.remove("hidden");
+      if (!elements.clipStart.value) {
+        elements.clipStart.value = await getCurrentPlayerTimeFromTab();
+      }
+    } else {
+      elements.clipInputsBox.classList.add("hidden");
+      elements.clipBadge.classList.add("hidden");
+    }
+  });
+
+  elements.btnSetStart.addEventListener("click", async () => {
+    elements.clipStart.value = await getCurrentPlayerTimeFromTab();
+  });
+
+  elements.btnSetEnd.addEventListener("click", async () => {
+    elements.clipEnd.value = await getCurrentPlayerTimeFromTab();
   });
 
   // 現在のアクティブタブを取得
@@ -157,21 +186,97 @@ function applyResolution(res) {
   if (elements.btnResLabel) elements.btnResLabel.textContent = btnLabels[res] || `${res}p`;
 }
 
+// 動画再生位置 (MM:SS または HH:MM:SS) をタブ内のvideoタグから取得
+async function getCurrentPlayerTimeFromTab() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || !tab.id) return "00:00";
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const video = document.querySelector("video");
+        return video && !isNaN(video.currentTime) ? Math.floor(video.currentTime) : 0;
+      }
+    });
+    if (results && results[0] && typeof results[0].result === "number") {
+      return formatSecondsToTimestamp(results[0].result);
+    }
+  } catch (e) {
+    console.warn("動画再生位置の取得に失敗しました:", e);
+  }
+  return "00:00";
+}
+
+function formatSecondsToTimestamp(totalSeconds) {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function parseTimeToSeconds(val) {
+  if (!val) return null;
+  val = String(val).trim();
+  if (val.includes(":")) {
+    const parts = val.split(":").map(p => parseInt(p.trim(), 10)).filter(n => !isNaN(n));
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    return null;
+  }
+  const n = parseInt(val, 10);
+  return isNaN(n) ? null : n;
+}
+
+function getClipTimes() {
+  if (!elements.clipEnable || !elements.clipEnable.checked) {
+    return { startTime: null, endTime: null, enabled: false };
+  }
+  const startVal = elements.clipStart ? elements.clipStart.value.trim() : null;
+  const endVal = elements.clipEnd ? elements.clipEnd.value.trim() : null;
+  return { startTime: startVal || null, endTime: endVal || null, enabled: true };
+}
+
+function formatClipLabel(startSec, endSec) {
+  const s = startSec !== null && startSec !== undefined ? formatSecondsToTimestamp(startSec) : "00:00";
+  const e = endSec !== null && endSec !== undefined ? formatSecondsToTimestamp(endSec) : "末尾";
+  return `${s} 〜 ${e}`;
+}
+
 // 1. 高画質/指定解像度 変換ハンドラ - Native Messagingで完全自動実行
 async function handleHqConvert() {
   if (!currentVideoUrl) return;
 
   const resName = selectedResolution === "2160" ? "4K" : `${selectedResolution}p`;
+  const clip = getClipTimes();
+
+  let loadingMsg = `${resName} ストリームを生成中...`;
+  let loadingSub = `※ ${resName} 映像と音声を高速結合しています (約2〜10秒)`;
+  if (clip.enabled) {
+    const sStr = clip.startTime || "00:00";
+    const eStr = clip.endTime || "末尾";
+    loadingMsg = `${resName} 区間切り出し中 (${sStr}〜${eStr})...`;
+    loadingSub = `※ 指定区間のみを高速抽出・結合しています (約2〜5秒)`;
+  }
+
   hideBoxes();
   elements.loadingBox.classList.remove("hidden");
-  elements.loadingText.textContent = `${resName} ストリームを生成中...`;
-  elements.loadingSubtext.textContent = `※ ${resName} 映像と音声を高速結合しています (約2〜10秒)`;
+  elements.loadingText.textContent = loadingMsg;
+  elements.loadingSubtext.textContent = loadingSub;
   elements.btnHqConvert.disabled = true;
 
   try {
     chrome.runtime.sendNativeMessage(
       "vrc_video_converter",
-      { url: currentVideoUrl, mode: "hq", resolution: selectedResolution },
+      {
+        url: currentVideoUrl,
+        mode: "hq",
+        resolution: selectedResolution,
+        start_time: clip.startTime,
+        end_time: clip.endTime
+      },
       async (response) => {
         elements.loadingBox.classList.add("hidden");
         elements.btnHqConvert.disabled = false;
@@ -188,10 +293,19 @@ async function handleHqConvert() {
         }
 
         if (response.status === "success" && response.stream_url) {
+          let qualityLabel = `${resName} (${response.quality || "VRChat最適化"})`;
+          let metaNote = `※ ${resName} ストリームです。VRChatプレイヤーに貼り付けて再生してください！`;
+
+          if (response.clipped || clip.enabled) {
+            const clipRange = formatClipLabel(response.start_sec, response.end_sec);
+            qualityLabel = `${resName} クリップ [${clipRange}]`;
+            metaNote = `※ 指定区間 (${clipRange}) を高速切り出したVRChat用ストリームです。`;
+          }
+
           displaySuccess({
-            quality: `${resName} (${response.quality || "VRChat最適化"})`,
+            quality: qualityLabel,
             stream_url: response.stream_url,
-            meta: `※ ${resName} ストリームです。VRChatプレイヤーに貼り付けて再生してください！`
+            meta: metaNote
           });
           await copyToClipboard(response.stream_url);
         } else {
@@ -214,12 +328,24 @@ async function handleCleanConvert() {
   }
 
   hideBoxes();
-  const cleanUrl = `https://www.youtube.com/watch?v=${currentVideoId}`;
+  const clip = getClipTimes();
+  let cleanUrl = `https://www.youtube.com/watch?v=${currentVideoId}`;
+  let clipNote = "※ 余計なパラメータを除去した標準形式です。ワールド内の全員が正常に視聴できます。";
+  let qualityBadge = "VRChat標準 (全員同期)";
+
+  if (clip.enabled && clip.startTime) {
+    const startSec = parseTimeToSeconds(clip.startTime);
+    if (startSec !== null && startSec > 0) {
+      cleanUrl += `&t=${startSec}s`;
+      qualityBadge = `通常リンク (開始: ${formatSecondsToTimestamp(startSec)})`;
+      clipNote = `※ 開始位置 (${formatSecondsToTimestamp(startSec)}〜) を付与した標準YouTubeリンクです。`;
+    }
+  }
 
   displaySuccess({
-    quality: "VRChat標準 (全員同期)",
+    quality: qualityBadge,
     stream_url: cleanUrl,
-    meta: "※ 余計なパラメータを除去した標準形式です。ワールド内の全員が正常に視聴できます。"
+    meta: clipNote
   });
 
   await copyToClipboard(cleanUrl);

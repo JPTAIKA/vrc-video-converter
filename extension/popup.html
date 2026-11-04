@@ -66,6 +66,30 @@
       </div>
     </section>
 
+    <!-- 再生区間 (クリップ切り出し) エリア -->
+    <section id="clipSection" class="card clip-card">
+      <div class="clip-header">
+        <label class="clip-toggle-label">
+          <input type="checkbox" id="clipEnable" class="clip-checkbox">
+          <span class="clip-title">⏱️ 区間指定 (クリップ切り出し)</span>
+        </label>
+        <span class="clip-badge hidden" id="clipBadge">有効</span>
+      </div>
+      
+      <div id="clipInputsBox" class="clip-inputs-box hidden">
+        <div class="clip-row">
+          <span class="clip-field-label">開始:</span>
+          <input type="text" id="clipStart" class="clip-input" placeholder="00:00 (先頭から)" maxlength="8">
+          <button type="button" id="btnSetStart" class="btn-timestamp" title="現在の動画再生位置を開始時間にセット">◀ 現在位置</button>
+        </div>
+        <div class="clip-row">
+          <span class="clip-field-label">終了:</span>
+          <input type="text" id="clipEnd" class="clip-input" placeholder="00:00 (最後まで)" maxlength="8">
+          <button type="button" id="btnSetEnd" class="btn-timestamp" title="現在の動画再生位置を終了時間にセット">◀ 現在位置</button>
+        </div>
+      </div>
+    </section>
+
     <!-- アクションボタンエリア -->
     <section id="actionSection" class="action-grid">
       <!-- 1. 高画質モード (選択した解像度) -->

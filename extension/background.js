@@ -8,7 +8,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         {
           url: request.url,
           mode: request.mode || "hq",
-          resolution: request.resolution || "1080"
+          resolution: request.resolution || "1080",
+          start_time: request.start_time || null,
+          end_time: request.end_time || null
         },
         (response) => {
           if (chrome.runtime.lastError) {

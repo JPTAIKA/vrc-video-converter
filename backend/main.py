@@ -168,6 +168,8 @@ class ConvertRequest(BaseModel):
     url: str = Field(..., description="YouTubeの動画URL")
     mode: str = Field(default="quick", description="変換モード ('quick' または 'hq')")
     resolution: Optional[str] = Field(default="1080", description="希望解像度 ('2160', '1080', '720', '480', '360')")
+    start_time: Optional[str] = Field(default=None, description="開始時間 (例: '01:23', '83')")
+    end_time: Optional[str] = Field(default=None, description="終了時間 (例: '03:45', '225')")
 
 
 @app.get("/health")
@@ -298,9 +300,15 @@ async def convert_video(req: ConvertRequest, request: Request):
 
     # 3. モードに応じた処理
     if req.mode == "hq":
-        # 【高画質モード】一時ダウンロード・多重化
+        # 【高画質モード】一時ダウンロード・多重化 & 区間切り出し
         target_res = req.resolution or "1080"
-        result = await download_high_quality(canonical_url, video_id, target_res)
+        result = await download_high_quality(
+            canonical_url, 
+            video_id, 
+            target_res,
+            start_time=req.start_time,
+            end_time=req.end_time
+        )
         stream_url = f"{base_url}/stream/{result['file_id']}.mp4"
         return {
             "status": "success",
@@ -309,20 +317,26 @@ async def convert_video(req: ConvertRequest, request: Request):
             "quality": result.get("quality", f"{target_res}p"),
             "stream_url": stream_url,
             "expires_in": settings.CACHE_TTL_SECONDS,
-            "cached": result.get("cached", False)
+            "cached": result.get("cached", False),
+            "start_sec": result.get("start_sec"),
+            "end_sec": result.get("end_sec"),
+            "clipped": result.get("clipped", False)
         }
     else:
         # 【通常モード】軽量・即時ストリーム抽出
-        # イベントループをブロックしないようスレッドプールで実行
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, get_quick_stream_info, canonical_url)
+        from downloader import parse_time_to_seconds
+        start_sec = parse_time_to_seconds(req.start_time)
         return {
             "status": "success",
             "mode": "quick",
             "title": result.get("title", ""),
             "quality": result.get("quality", "Standard (<=720p)"),
             "stream_url": result["stream_url"],
-            "cached": False
+            "cached": False,
+            "start_sec": start_sec,
+            "clipped": bool(start_sec is not None)
         }
 
 

@@ -400,6 +400,107 @@ body {
   padding-top: 8px;
 }
 
+/* 区間指定 (クリップ) カード */
+.clip-card {
+  padding: 8px 12px;
+}
+
+.clip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.clip-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.clip-checkbox {
+  accent-color: var(--primary);
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+}
+
+.clip-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.clip-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--success);
+  background: rgba(16, 185, 129, 0.15);
+  padding: 1px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.clip-inputs-box {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--card-border);
+}
+
+.clip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.clip-field-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  width: 32px;
+  flex-shrink: 0;
+  font-weight: 600;
+}
+
+.clip-input {
+  flex: 1;
+  background: #111722;
+  border: 1px solid var(--card-border);
+  color: var(--text-main);
+  font-size: 11px;
+  font-family: monospace;
+  padding: 5px 6px;
+  border-radius: 6px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.clip-input:focus {
+  border-color: var(--primary);
+}
+
+.btn-timestamp {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #38bdf8;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.btn-timestamp:hover {
+  background: var(--primary);
+  color: #042217;
+  border-color: var(--primary);
+}
+
 .hidden {
   display: none !important;
 }

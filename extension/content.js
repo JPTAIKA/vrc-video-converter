@@ -143,6 +143,30 @@ function openPopup() {
       </div>
     </div>
 
+    <!-- 再生区間 (クリップ切り出し) エリア -->
+    <div class="vrc-clip-section">
+      <div class="vrc-clip-header">
+        <label class="vrc-clip-toggle-label">
+          <input type="checkbox" id="vrc-clip-enable" class="vrc-clip-checkbox">
+          <span class="vrc-clip-title">⏱️ 区間指定 (クリップ切り出し)</span>
+        </label>
+        <span class="vrc-clip-badge hidden" id="vrc-clip-active-badge">有効</span>
+      </div>
+      
+      <div id="vrc-clip-inputs-box" class="vrc-clip-inputs-box hidden">
+        <div class="vrc-clip-row">
+          <span class="vrc-clip-field-label">開始:</span>
+          <input type="text" id="vrc-clip-start" class="vrc-clip-input" placeholder="00:00 (先頭から)" maxlength="8">
+          <button type="button" id="vrc-btn-set-start" class="vrc-btn-timestamp" title="現在の動画再生位置を開始時間にセット">◀ 現在位置</button>
+        </div>
+        <div class="vrc-clip-row">
+          <span class="vrc-clip-field-label">終了:</span>
+          <input type="text" id="vrc-clip-end" class="vrc-clip-input" placeholder="00:00 (最後まで)" maxlength="8">
+          <button type="button" id="vrc-btn-set-end" class="vrc-btn-timestamp" title="現在の動画再生位置を終了時間にセット">◀ 現在位置</button>
+        </div>
+      </div>
+    </div>
+
     <!-- アクションボタンエリア -->
     <div class="vrc-actions-box">
       <button type="button" class="vrc-action-btn vrc-btn-primary" id="vrc-btn-convert">
@@ -190,6 +214,36 @@ function openPopup() {
   // 通常リンクコピー
   inPlayerPopup.querySelector("#vrc-btn-clean").addEventListener("click", handleCopyClean);
 
+  // 区間指定イベント
+  const clipEnable = inPlayerPopup.querySelector("#vrc-clip-enable");
+  const clipInputsBox = inPlayerPopup.querySelector("#vrc-clip-inputs-box");
+  const clipBadge = inPlayerPopup.querySelector("#vrc-clip-active-badge");
+  const clipStart = inPlayerPopup.querySelector("#vrc-clip-start");
+  const clipEnd = inPlayerPopup.querySelector("#vrc-clip-end");
+  const btnSetStart = inPlayerPopup.querySelector("#vrc-btn-set-start");
+  const btnSetEnd = inPlayerPopup.querySelector("#vrc-btn-set-end");
+
+  clipEnable.addEventListener("change", () => {
+    if (clipEnable.checked) {
+      clipInputsBox.classList.remove("hidden");
+      clipBadge.classList.remove("hidden");
+      if (!clipStart.value) {
+        clipStart.value = getCurrentPlayerTime();
+      }
+    } else {
+      clipInputsBox.classList.add("hidden");
+      clipBadge.classList.add("hidden");
+    }
+  });
+
+  btnSetStart.addEventListener("click", () => {
+    clipStart.value = getCurrentPlayerTime();
+  });
+
+  btnSetEnd.addEventListener("click", () => {
+    clipEnd.value = getCurrentPlayerTime();
+  });
+
   // サーバー死活確認
   pingServer();
 
@@ -199,6 +253,55 @@ function openPopup() {
   // ポップアップ内クリックがプレイヤーに伝播して再生/停止するのを防止
   inPlayerPopup.addEventListener("click", (e) => e.stopPropagation());
   inPlayerPopup.addEventListener("mousedown", (e) => e.stopPropagation());
+}
+
+// 現在の動画再生位置 (HH:MM:SS または MM:SS) を取得
+function getCurrentPlayerTime() {
+  const video = document.querySelector("video");
+  if (video && !isNaN(video.currentTime)) {
+    return formatSecondsToTimestamp(Math.floor(video.currentTime));
+  }
+  return "00:00";
+}
+
+function formatSecondsToTimestamp(totalSeconds) {
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  }
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function parseTimeToSeconds(val) {
+  if (!val) return null;
+  val = String(val).trim();
+  if (val.includes(":")) {
+    const parts = val.split(":").map(p => parseInt(p.trim(), 10)).filter(n => !isNaN(n));
+    if (parts.length === 2) return parts[0] * 60 + parts[1];
+    if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2];
+    return null;
+  }
+  const n = parseInt(val, 10);
+  return isNaN(n) ? null : n;
+}
+
+function getClipTimes() {
+  if (!inPlayerPopup) return { startTime: null, endTime: null, enabled: false };
+  const clipEnable = inPlayerPopup.querySelector("#vrc-clip-enable");
+  if (!clipEnable || !clipEnable.checked) {
+    return { startTime: null, endTime: null, enabled: false };
+  }
+  const startVal = inPlayerPopup.querySelector("#vrc-clip-start").value.trim() || null;
+  const endVal = inPlayerPopup.querySelector("#vrc-clip-end").value.trim() || null;
+  return { startTime: startVal, endTime: endVal, enabled: true };
+}
+
+function formatClipLabel(startSec, endSec) {
+  const s = startSec !== null && startSec !== undefined ? formatSecondsToTimestamp(startSec) : "00:00";
+  const e = endSec !== null && endSec !== undefined ? formatSecondsToTimestamp(endSec) : "末尾";
+  return `${s} 〜 ${e}`;
 }
 
 // 現在の動画メタ情報を取得
@@ -295,12 +398,20 @@ async function handleConvertHq() {
   const dynamicArea = inPlayerPopup.querySelector("#vrc-dynamic-area");
   const btnConvert = inPlayerPopup.querySelector("#vrc-btn-convert");
   const resName = selectedResolution === "2160" ? "4K" : `${selectedResolution}p`;
+  const clip = getClipTimes();
+
+  let loadingMsg = `${resName} 高画質ストリームを生成中... (約2〜5秒)`;
+  if (clip.enabled) {
+    const sStr = clip.startTime || "00:00";
+    const eStr = clip.endTime || "末尾";
+    loadingMsg = `${resName} 区間切り出し中 (${sStr}〜${eStr})... (約2〜4秒)`;
+  }
 
   btnConvert.disabled = true;
   dynamicArea.innerHTML = `
     <div class="vrc-status-box">
       <div class="vrc-spinner"></div>
-      <span class="vrc-status-text">${resName} 高画質ストリームを生成中... (約2〜5秒)</span>
+      <span class="vrc-status-text">${escapeHtml(loadingMsg)}</span>
     </div>
   `;
 
@@ -310,7 +421,9 @@ async function handleConvertHq() {
         action: "convert",
         url: window.location.href,
         mode: "hq",
-        resolution: selectedResolution
+        resolution: selectedResolution,
+        start_time: clip.startTime,
+        end_time: clip.endTime
       },
       async (response) => {
         btnConvert.disabled = false;
@@ -332,18 +445,27 @@ async function handleConvertHq() {
             statusEl.style.color = "#10b981";
           }
           await copyToClipboard(response.stream_url);
+
+          let metaNote = "※ AVPro Video (VRChat) 互換ストリーム | Cloudflareトンネル経由";
+          let qualityBadge = `${resName} (${response.quality || "VRChat最適化"})`;
+          if (response.clipped || clip.enabled) {
+            const clipRange = formatClipLabel(response.start_sec, response.end_sec);
+            qualityBadge = `${resName} クリップ [${clipRange}]`;
+            metaNote = `※ 指定区間 (${clipRange}) を高速切り出したVRChat用ストリームです。`;
+          }
+
           dynamicArea.innerHTML = `
             <div class="vrc-result-box">
               <div class="vrc-result-header">
                 <span class="vrc-success-badge">✓ コピー完了</span>
-                <span class="vrc-quality-label">${resName} (${response.quality || "VRChat最適化"})</span>
+                <span class="vrc-quality-label">${escapeHtml(qualityBadge)}</span>
               </div>
               <div class="vrc-result-msg">VRChat内の動画プレイヤーにペーストしてください！</div>
               <div class="vrc-url-copy-box">
                 <input type="text" class="vrc-url-input" id="vrc-result-input" readonly value="${escapeHtml(response.stream_url)}">
                 <button type="button" class="vrc-btn-copy-small" id="vrc-btn-recopy">コピー</button>
               </div>
-              <div class="vrc-result-meta">※ AVPro Video (VRChat) 互換ストリーム | Cloudflareトンネル経由</div>
+              <div class="vrc-result-meta">${escapeHtml(metaNote)}</div>
             </div>
           `;
 
@@ -386,21 +508,34 @@ async function handleCopyClean() {
     return;
   }
 
-  const cleanUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const clip = getClipTimes();
+  let cleanUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  let clipNote = "※ 余計なパラメータを除去した標準YouTubeリンクです。";
+  let qualityBadge = "通常リンク (全員同期)";
+
+  if (clip.enabled && clip.startTime) {
+    const startSec = parseTimeToSeconds(clip.startTime);
+    if (startSec !== null && startSec > 0) {
+      cleanUrl += `&t=${startSec}s`;
+      qualityBadge = `通常リンク (開始: ${formatSecondsToTimestamp(startSec)})`;
+      clipNote = `※ 開始位置 (${formatSecondsToTimestamp(startSec)}〜) を付与した標準YouTubeリンクです。`;
+    }
+  }
+
   await copyToClipboard(cleanUrl);
 
   dynamicArea.innerHTML = `
     <div class="vrc-result-box">
       <div class="vrc-result-header">
         <span class="vrc-success-badge">✓ コピー完了</span>
-        <span class="vrc-quality-label">通常リンク (全員同期)</span>
+        <span class="vrc-quality-label">${escapeHtml(qualityBadge)}</span>
       </div>
       <div class="vrc-result-msg">Publicインスタンス等で全員に同期されます。</div>
       <div class="vrc-url-copy-box">
         <input type="text" class="vrc-url-input" id="vrc-clean-result-input" readonly value="${escapeHtml(cleanUrl)}">
         <button type="button" class="vrc-btn-copy-small" id="vrc-clean-btn-recopy">コピー</button>
       </div>
-      <div class="vrc-result-meta">※ 余計なパラメータを除去した標準YouTubeリンクです。</div>
+      <div class="vrc-result-meta">${escapeHtml(clipNote)}</div>
     </div>
   `;
 
