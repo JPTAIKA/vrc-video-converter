@@ -34,6 +34,15 @@
           <span id="videoUrl" class="video-url"></span>
         </div>
       </div>
+
+      <!-- ライブ配信中警告バナー -->
+      <div id="liveAlertBox" class="live-alert hidden">
+        <span class="live-dot">🔴</span>
+        <div class="live-text">
+          <strong>現在ライブ配信中です（変換無効）</strong>
+          <span>配信中の動画は仕様上、高画質変換・区間指定をご利用いただけません。配信終了後のアーカイブ動画にてご利用ください。</span>
+        </div>
+      </div>
     </section>
 
     <!-- 画質選択エリア -->
@@ -79,13 +88,41 @@
       <div id="clipInputsBox" class="clip-inputs-box hidden">
         <div class="clip-row">
           <span class="clip-field-label">開始:</span>
-          <input type="text" id="clipStart" class="clip-input" placeholder="00:00 (先頭から)" maxlength="8">
+          <input type="text" id="clipStart" class="clip-input" placeholder="00:00" maxlength="8">
+          <div class="step-btns">
+            <button type="button" class="btn-step" data-target="start" data-delta="-5" title="5秒戻す">-5s</button>
+            <button type="button" class="btn-step" data-target="start" data-delta="-1" title="1秒戻す">-1s</button>
+            <button type="button" class="btn-step" data-target="start" data-delta="1" title="1秒進める">+1s</button>
+            <button type="button" class="btn-step" data-target="start" data-delta="5" title="5秒進める">+5s</button>
+          </div>
           <button type="button" id="btnSetStart" class="btn-timestamp" title="現在の動画再生位置を開始時間にセット">◀ 現在位置</button>
         </div>
         <div class="clip-row">
           <span class="clip-field-label">終了:</span>
-          <input type="text" id="clipEnd" class="clip-input" placeholder="00:00 (最後まで)" maxlength="8">
+          <input type="text" id="clipEnd" class="clip-input" placeholder="00:00" maxlength="8">
+          <div class="step-btns">
+            <button type="button" class="btn-step" data-target="end" data-delta="-5" title="5秒戻す">-5s</button>
+            <button type="button" class="btn-step" data-target="end" data-delta="-1" title="1秒戻す">-1s</button>
+            <button type="button" class="btn-step" data-target="end" data-delta="1" title="1秒進める">+1s</button>
+            <button type="button" class="btn-step" data-target="end" data-delta="5" title="5秒進める">+5s</button>
+          </div>
           <button type="button" id="btnSetEnd" class="btn-timestamp" title="現在の動画再生位置を終了時間にセット">◀ 現在位置</button>
+        </div>
+
+        <!-- 再生バー風 区間スライダートラック -->
+        <div class="timeline-container">
+          <div class="timeline-header">
+            <span class="timeline-time-label" id="timelineLblStart">00:00</span>
+            <span class="timeline-selected-range" id="timelineLblRange">選択: 00:00 〜 00:00</span>
+            <span class="timeline-time-label" id="timelineLblTotal">00:00</span>
+          </div>
+          <div class="timeline-slider-box" id="timelineSliderBox">
+            <div class="timeline-track"></div>
+            <div class="timeline-highlight" id="timelineHighlight"></div>
+            <div class="timeline-playhead" id="timelinePlayhead" title="現在の再生位置"></div>
+            <input type="range" id="sliderStart" class="slider-range" min="0" max="100" value="0" step="1">
+            <input type="range" id="sliderEnd" class="slider-range" min="0" max="100" value="100" step="1">
+          </div>
         </div>
       </div>
     </section>

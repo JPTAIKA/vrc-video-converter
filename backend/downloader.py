@@ -84,6 +84,13 @@ def get_quick_stream_info(canonical_url: str) -> dict:
             if not info:
                 raise HTTPException(status_code=404, detail="動画情報を取得できませんでした。")
 
+            is_live = info.get('is_live') or info.get('live_status') in ['is_live', 'is_upcoming']
+            if is_live:
+                raise HTTPException(
+                    status_code=400,
+                    detail="現在配信中のライブ動画は変換できません。配信終了後のアーカイブ動画にてご利用ください。"
+                )
+
             duration = info.get('duration') or 0
             if duration > settings.MAX_VIDEO_DURATION_SECONDS:
                 raise HTTPException(
@@ -227,6 +234,13 @@ async def download_high_quality(
                 info = ydl.extract_info(canonical_url, download=False)
                 if not info:
                     raise HTTPException(status_code=404, detail="動画情報を取得できませんでした。")
+
+                is_live = info.get('is_live') or info.get('live_status') in ['is_live', 'is_upcoming']
+                if is_live:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="現在配信中のライブ動画は変換できません。配信終了後のアーカイブ動画にてご利用ください。"
+                    )
 
                 duration = info.get('duration') or 0
                 if duration > settings.MAX_VIDEO_DURATION_SECONDS and start_sec is None:

@@ -501,6 +501,191 @@ body {
   border-color: var(--primary);
 }
 
+/* 微調整ボタン (+-1s, +-5s) */
+.step-btns {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.btn-step {
+  background: #1e293b;
+  border: 1px solid #334155;
+  color: #94a3b8;
+  font-size: 10px;
+  font-family: monospace;
+  font-weight: 600;
+  padding: 3px 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  line-height: 1;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.btn-step:hover {
+  background: #0284c7;
+  color: #ffffff;
+  border-color: #0284c7;
+}
+
+.btn-step:active {
+  transform: scale(0.92);
+}
+
+/* 再生バー風 区間スライダートラック */
+.timeline-container {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--card-border);
+}
+
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  user-select: none;
+}
+
+.timeline-selected-range {
+  color: #38bdf8;
+  font-weight: 700;
+  font-size: 10.5px;
+}
+
+.timeline-slider-box {
+  position: relative;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+}
+
+.timeline-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 6px;
+  background: #1e293b;
+  border-radius: 3px;
+  border: 1px solid #334155;
+  pointer-events: none;
+}
+
+.timeline-highlight {
+  position: absolute;
+  height: 6px;
+  background: linear-gradient(90deg, #06b6d4, #3b82f6);
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 1;
+  box-shadow: 0 0 6px rgba(6, 182, 212, 0.5);
+}
+
+.timeline-playhead {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  background: #ef4444;
+  border-radius: 1px;
+  pointer-events: none;
+  z-index: 2;
+  transform: translateX(-50%);
+  box-shadow: 0 0 4px #ef4444;
+}
+
+.slider-range {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+  background: none;
+  outline: none;
+}
+
+.slider-range::-webkit-slider-thumb {
+  pointer-events: auto;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #06b6d4;
+  border: 2px solid #ffffff;
+  cursor: grab;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.7);
+  transition: transform 0.1s ease, background 0.1s ease;
+}
+
+.slider-range::-webkit-slider-thumb:hover {
+  transform: scale(1.25);
+  background: #38bdf8;
+}
+
+.slider-range::-webkit-slider-thumb:active {
+  cursor: grabbing;
+  transform: scale(1.3);
+  background: #0284c7;
+}
+
+/* ライブ配信中警告バナー */
+.live-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: 8px;
+}
+
+.live-dot {
+  font-size: 14px;
+  line-height: 1.2;
+  animation: live-pulse 1.5s infinite;
+}
+
+@keyframes live-pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+
+.live-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.live-text strong {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #f87171;
+}
+
+.live-text span {
+  font-size: 10px;
+  color: #fca5a5;
+  line-height: 1.35;
+}
+
+.btn:disabled {
+  opacity: 0.45 !important;
+  cursor: not-allowed !important;
+  filter: grayscale(0.6);
+}
+
 .hidden {
   display: none !important;
 }

@@ -18,6 +18,15 @@ const elements = {
   clipEnd: document.getElementById("clipEnd"),
   btnSetStart: document.getElementById("btnSetStart"),
   btnSetEnd: document.getElementById("btnSetEnd"),
+  liveAlertBox: document.getElementById("liveAlertBox"),
+  timelineHighlight: document.getElementById("timelineHighlight"),
+  timelinePlayhead: document.getElementById("timelinePlayhead"),
+  sliderStart: document.getElementById("sliderStart"),
+  sliderEnd: document.getElementById("sliderEnd"),
+  timelineLblStart: document.getElementById("timelineLblStart"),
+  timelineLblRange: document.getElementById("timelineLblRange"),
+  timelineLblTotal: document.getElementById("timelineLblTotal"),
+  timelineSliderBox: document.getElementById("timelineSliderBox"),
   btnHqConvert: document.getElementById("btnHqConvert"),
   btnCleanConvert: document.getElementById("btnCleanConvert"),
   loadingBox: document.getElementById("loadingBox"),
@@ -52,30 +61,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     });
   });
 
-  // 区間指定イベント
-  elements.clipEnable.addEventListener("change", async () => {
-    if (elements.clipEnable.checked) {
-      elements.clipInputsBox.classList.remove("hidden");
-      elements.clipBadge.classList.remove("hidden");
-      if (!elements.clipStart.value) {
-        elements.clipStart.value = await getCurrentPlayerTimeFromTab();
-      }
-    } else {
-      elements.clipInputsBox.classList.add("hidden");
-      elements.clipBadge.classList.add("hidden");
-    }
-  });
-
-  elements.btnSetStart.addEventListener("click", async () => {
-    elements.clipStart.value = await getCurrentPlayerTimeFromTab();
-  });
-
-  elements.btnSetEnd.addEventListener("click", async () => {
-    elements.clipEnd.value = await getCurrentPlayerTimeFromTab();
-  });
-
   // 現在のアクティブタブを取得
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  let isLive = false;
+
   if (tab && isYouTubeUrl(tab.url)) {
     currentVideoUrl = tab.url;
     currentVideoId = extractVideoId(tab.url);
@@ -84,8 +73,21 @@ document.addEventListener("DOMContentLoaded", async () => {
     elements.videoUrl.textContent = tab.url;
     elements.notYoutubeAlert.classList.add("hidden");
     elements.youtubeActiveBox.classList.remove("hidden");
-    elements.btnHqConvert.disabled = false;
-    elements.btnCleanConvert.disabled = false;
+
+    isLive = await checkIsLiveStreamFromTab();
+    if (isLive) {
+      if (elements.liveAlertBox) elements.liveAlertBox.classList.remove("hidden");
+      elements.btnHqConvert.disabled = true;
+      elements.btnCleanConvert.disabled = true;
+      elements.clipEnable.disabled = true;
+      elements.serverStatusText.textContent = "🔴 ライブ配信中 (変換無効)";
+      elements.serverStatusText.style.color = "#ef4444";
+    } else {
+      if (elements.liveAlertBox) elements.liveAlertBox.classList.add("hidden");
+      elements.btnHqConvert.disabled = false;
+      elements.btnCleanConvert.disabled = false;
+      elements.clipEnable.disabled = false;
+    }
   } else {
     elements.notYoutubeAlert.classList.remove("hidden");
     elements.youtubeActiveBox.classList.add("hidden");
@@ -93,16 +95,36 @@ document.addEventListener("DOMContentLoaded", async () => {
     elements.btnCleanConvert.disabled = true;
   }
 
+  // 区間指定イベント
+  if (!isLive) {
+    elements.clipEnable.addEventListener("change", async () => {
+      if (elements.clipEnable.checked) {
+        elements.clipInputsBox.classList.remove("hidden");
+        elements.clipBadge.classList.remove("hidden");
+        if (!elements.clipStart.value) {
+          elements.clipStart.value = await getCurrentPlayerTimeFromTab();
+        }
+        await setupPopupTimeline();
+      } else {
+        elements.clipInputsBox.classList.add("hidden");
+        elements.clipBadge.classList.add("hidden");
+      }
+    });
+
+    await setupPopupTimeline();
+  }
+
   // イベント登録
-  elements.btnHqConvert.addEventListener("click", handleHqConvert);
-  elements.btnCleanConvert.addEventListener("click", handleCleanConvert);
+  if (!isLive) {
+    elements.btnHqConvert.addEventListener("click", handleHqConvert);
+    elements.btnCleanConvert.addEventListener("click", handleCleanConvert);
+    pingNativeHost();
+  }
+
   elements.btnManualCopy.addEventListener("click", copyResultUrl);
   elements.btnOptions.addEventListener("click", () => {
     chrome.runtime.openOptionsPage();
   });
-
-  // ネイティブエンジンの死活確認 (ping)
-  pingNativeHost();
 });
 
 // YouTube URLの判定
@@ -184,6 +206,203 @@ function applyResolution(res) {
   };
   if (elements.resBadge) elements.resBadge.textContent = labels[res] || `${res}p`;
   if (elements.btnResLabel) elements.btnResLabel.textContent = btnLabels[res] || `${res}p`;
+}
+
+// ライブ配信判定
+async function checkIsLiveStreamFromTab() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || !tab.id) return false;
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const video = document.querySelector("video");
+        if (video && (!isFinite(video.duration) || isNaN(video.duration))) return true;
+        const liveBadge = document.querySelector(".ytp-live-badge, .ytp-live");
+        if (liveBadge && !liveBadge.classList.contains("ytp-live-badge-disabled") && !liveBadge.disabled) {
+          if (liveBadge.offsetParent !== null) return true;
+        }
+        const metaLive = document.querySelector(".badge-style-type-live-now, ytd-badge-supported-renderer [aria-label*='ライブ'], ytd-badge-supported-renderer [aria-label*='LIVE']");
+        if (metaLive && metaLive.offsetParent !== null) return true;
+        const watchFlexy = document.querySelector("ytd-watch-flexy");
+        if (watchFlexy && (watchFlexy.hasAttribute("is-live-playback") || watchFlexy.hasAttribute("is-live"))) return true;
+        if (window.location.pathname.startsWith("/live/")) return true;
+        return false;
+      }
+    });
+    return results && results[0] && results[0].result === true;
+  } catch (e) {
+    return false;
+  }
+}
+
+async function getVideoDurationFromTab() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || !tab.id) return 300;
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const video = document.querySelector("video");
+        return video && isFinite(video.duration) && video.duration > 0 ? Math.floor(video.duration) : 300;
+      }
+    });
+    return (results && results[0] && typeof results[0].result === "number") ? results[0].result : 300;
+  } catch (e) {
+    return 300;
+  }
+}
+
+async function getCurrentVideoSecondsFromTab() {
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab || !tab.id) return 0;
+    const results = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      func: () => {
+        const video = document.querySelector("video");
+        return video && !isNaN(video.currentTime) ? Math.floor(video.currentTime) : 0;
+      }
+    });
+    return (results && results[0] && typeof results[0].result === "number") ? results[0].result : 0;
+  } catch (e) {
+    return 0;
+  }
+}
+
+let isPopupTimelineInitialized = false;
+
+async function setupPopupTimeline() {
+  if (!elements.sliderStart || !elements.sliderEnd) return;
+
+  const duration = await getVideoDurationFromTab();
+  const currentSec = await getCurrentVideoSecondsFromTab();
+
+  elements.sliderStart.max = duration;
+  elements.sliderEnd.max = duration;
+  if (elements.timelineLblTotal) {
+    elements.timelineLblTotal.textContent = formatSecondsToTimestamp(duration);
+  }
+
+  if (elements.timelinePlayhead) {
+    const playheadPct = duration > 0 ? (currentSec / duration) * 100 : 0;
+    elements.timelinePlayhead.style.left = `${Math.min(100, Math.max(0, playheadPct))}%`;
+  }
+
+  function getTimes() {
+    let s = parseTimeToSeconds(elements.clipStart.value);
+    let e = parseTimeToSeconds(elements.clipEnd.value);
+    if (s === null) s = 0;
+    if (e === null) e = duration;
+    s = Math.max(0, Math.min(s, duration));
+    e = Math.max(0, Math.min(e, duration));
+    if (s >= e) s = Math.max(0, e - 1);
+    return { s, e };
+  }
+
+  function updateVisuals(s, e) {
+    elements.sliderStart.value = s;
+    elements.sliderEnd.value = e;
+    const leftPct = duration > 0 ? (s / duration) * 100 : 0;
+    const widthPct = duration > 0 ? ((e - s) / duration) * 100 : 100;
+    if (elements.timelineHighlight) {
+      elements.timelineHighlight.style.left = `${leftPct}%`;
+      elements.timelineHighlight.style.width = `${widthPct}%`;
+    }
+    if (elements.timelineLblStart) elements.timelineLblStart.textContent = formatSecondsToTimestamp(s);
+    if (elements.timelineLblRange) {
+      const rangeSec = e - s;
+      elements.timelineLblRange.textContent = `選択: ${formatSecondsToTimestamp(s)} 〜 ${formatSecondsToTimestamp(e)} (${formatSecondsToTimestamp(rangeSec)})`;
+    }
+  }
+
+  if (!isPopupTimelineInitialized) {
+    isPopupTimelineInitialized = true;
+
+    elements.sliderStart.addEventListener("input", () => {
+      let s = parseInt(elements.sliderStart.value, 10);
+      let e = parseInt(elements.sliderEnd.value, 10);
+      if (s >= e) {
+        s = Math.max(0, e - 1);
+        elements.sliderStart.value = s;
+      }
+      elements.clipStart.value = formatSecondsToTimestamp(s);
+      updateVisuals(s, e);
+    });
+
+    elements.sliderEnd.addEventListener("input", () => {
+      let s = parseInt(elements.sliderStart.value, 10);
+      let e = parseInt(elements.sliderEnd.value, 10);
+      if (e <= s) {
+        e = Math.min(duration, s + 1);
+        elements.sliderEnd.value = e;
+      }
+      elements.clipEnd.value = formatSecondsToTimestamp(e);
+      updateVisuals(s, e);
+    });
+
+    elements.clipStart.addEventListener("input", () => {
+      const { s, e } = getTimes();
+      updateVisuals(s, e);
+    });
+
+    elements.clipEnd.addEventListener("input", () => {
+      const { s, e } = getTimes();
+      updateVisuals(s, e);
+    });
+
+    if (elements.timelineSliderBox) {
+      elements.timelineSliderBox.addEventListener("mousemove", (ev) => {
+        const rect = elements.timelineSliderBox.getBoundingClientRect();
+        const clickRatio = (ev.clientX - rect.left) / rect.width;
+        const mouseSec = clickRatio * duration;
+        const s = parseInt(elements.sliderStart.value, 10);
+        const e = parseInt(elements.sliderEnd.value, 10);
+        if (Math.abs(mouseSec - s) < Math.abs(mouseSec - e)) {
+          elements.sliderStart.style.zIndex = "4";
+          elements.sliderEnd.style.zIndex = "3";
+        } else {
+          elements.sliderEnd.style.zIndex = "4";
+          elements.sliderStart.style.zIndex = "3";
+        }
+      });
+    }
+
+    document.querySelectorAll(".btn-step").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const target = btn.getAttribute("data-target");
+        const delta = parseInt(btn.getAttribute("data-delta"), 10);
+        let { s, e } = getTimes();
+        if (target === "start") {
+          s = Math.max(0, Math.min(s + delta, e - 1));
+          elements.clipStart.value = formatSecondsToTimestamp(s);
+        } else if (target === "end") {
+          e = Math.min(duration, Math.max(e + delta, s + 1));
+          elements.clipEnd.value = formatSecondsToTimestamp(e);
+        }
+        updateVisuals(s, e);
+      });
+    });
+
+    elements.btnSetStart.addEventListener("click", async () => {
+      const curr = await getCurrentVideoSecondsFromTab();
+      let { s, e } = getTimes();
+      s = Math.max(0, Math.min(curr, e - 1));
+      elements.clipStart.value = formatSecondsToTimestamp(s);
+      updateVisuals(s, e);
+    });
+
+    elements.btnSetEnd.addEventListener("click", async () => {
+      const curr = await getCurrentVideoSecondsFromTab();
+      let { s, e } = getTimes();
+      e = Math.min(duration, Math.max(curr, s + 1));
+      elements.clipEnd.value = formatSecondsToTimestamp(e);
+      updateVisuals(s, e);
+    });
+  }
+
+  const initial = getTimes();
+  updateVisuals(initial.s, initial.e);
 }
 
 // 動画再生位置 (MM:SS または HH:MM:SS) をタブ内のvideoタグから取得
