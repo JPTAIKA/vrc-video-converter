@@ -226,26 +226,48 @@ async function checkIsLiveStreamFromTab() {
           if (window.location.pathname.startsWith("/shorts/")) return false;
           if (window.location.pathname.startsWith("/live/")) return true;
 
-          // 1. YouTube公式プレイヤーAPI
+          // 1. duration または endDate が存在すれば録画・プレミア公開終了済み・アーカイブ
+          const durationMeta = document.querySelector('meta[itemprop="duration"]');
+          if (durationMeta && durationMeta.getAttribute("content")) return false;
+
+          const endDateMeta = document.querySelector('meta[itemprop="endDate"]');
+          if (endDateMeta && endDateMeta.getAttribute("content")) return false;
+
+          // 2. YouTube公式プレイヤーAPI
           const player = document.getElementById("movie_player");
-          if (player && typeof player.getVideoData === "function") {
-            const data = player.getVideoData();
-            if (data && typeof data.isLive === "boolean") {
-              return data.isLive;
+          if (player) {
+            if (typeof player.getVideoData === "function") {
+              const data = player.getVideoData();
+              if (data && typeof data.isLive === "boolean") {
+                return data.isLive;
+              }
+            }
+            if (player.classList.contains("ytp-live") || player.querySelector(".ytp-live-badge")) {
+              return true;
             }
           }
 
-          // 2. YouTube内部レスポンス
+          // 3. 生配信メタタグ (endDateが存在しない場合)
+          const liveBroadcastMeta = document.querySelector('meta[itemprop="isLiveBroadcast"][content="True"]');
+          if (liveBroadcastMeta) return true;
+
+          // 4. YouTube内部レスポンス
           if (window.ytInitialPlayerResponse) {
             const vd = window.ytInitialPlayerResponse.videoDetails;
             if (vd) {
-              if (vd.isLive === true || vd.isLiveContent === true) return true;
+              if (vd.isLive === true) return true;
               if (vd.isLiveContent === false) return false;
             }
             const mf = window.ytInitialPlayerResponse.microformat?.playerMicroformatRenderer?.liveBroadcastDetails;
             if (mf && typeof mf.isLiveNow === "boolean") {
               return mf.isLiveNow;
             }
+          }
+
+          // 5. videoタグのduration判定
+          const video = document.querySelector("#movie_player video, video");
+          if (video && (video.duration === Infinity || isNaN(video.duration))) {
+            return true;
           }
         } catch (e) {}
         return false;

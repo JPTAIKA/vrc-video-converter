@@ -83,27 +83,57 @@ function getActiveVideoElement() {
   return document.querySelector("video");
 }
 
-// ライブ配信判定 (YouTube公式プレイヤーAPIおよび内部データから生配信中かどうかを正確に判定)
-function checkIsLiveStream() {
-  if (window.location.pathname.startsWith("/shorts/")) return Promise.resolve(false);
-  if (window.location.pathname.startsWith("/live/")) return Promise.resolve(true);
+// ライブ配信判定 (YouTube公式プレイヤーAPI、DOMメタデータ、および内部データから生配信中かどうかを正確に判定)
+async function checkIsLiveStream() {
+  const path = window.location.pathname;
+  if (path.startsWith("/shorts/")) return false;
+  if (path.startsWith("/live/")) return true;
 
-  return new Promise((resolve) => {
-    try {
-      chrome.runtime.sendMessage({ action: "check_is_live" }, (response) => {
-        if (chrome.runtime.lastError || !response) {
-          // フォールバック: player DOM
-          const player = document.getElementById("movie_player");
-          const isLiveDom = !!(player && player.classList.contains("ytp-live"));
-          resolve(isLiveDom);
+  // 1. duration または endDate がDOMメタに存在すれば録画・プレミア公開終了済み・アーカイブ (生配信ではない)
+  const durationMeta = document.querySelector('meta[itemprop="duration"]');
+  if (durationMeta && durationMeta.getAttribute("content")) return false;
+
+  const endDateMeta = document.querySelector('meta[itemprop="endDate"]');
+  if (endDateMeta && endDateMeta.getAttribute("content")) return false;
+
+  // 2. プレイヤーDOM検査 (公式ライブバッジやytp-liveクラス)
+  const player = document.getElementById("movie_player") || document.querySelector(".html5-video-player");
+  if (player) {
+    const hasLiveClass = player.classList.contains("ytp-live");
+    const liveBadge = player.querySelector(".ytp-live-badge");
+    const isLiveBadgeVisible = !!(liveBadge && (liveBadge.offsetWidth > 0 || liveBadge.offsetHeight > 0 || window.getComputedStyle(liveBadge).display !== "none"));
+    if (hasLiveClass || isLiveBadgeVisible) {
+      return true;
+    }
+  }
+
+  // 3. 生配信メタタグ (endDateが存在しない場合)
+  const liveBroadcastMeta = document.querySelector('meta[itemprop="isLiveBroadcast"][content="True"]');
+  if (liveBroadcastMeta) return true;
+
+  // 4. Background Service Worker (MAIN world executeScript) による厳密な公式API判定
+  try {
+    const response = await new Promise((resolve) => {
+      chrome.runtime.sendMessage({ action: "check_is_live" }, (res) => {
+        if (chrome.runtime.lastError || !res) {
+          resolve(null);
         } else {
-          resolve(!!response.is_live);
+          resolve(res);
         }
       });
-    } catch (e) {
-      resolve(false);
+    });
+    if (response && typeof response.is_live === "boolean") {
+      return response.is_live;
     }
-  });
+  } catch (e) {}
+
+  // 5. videoタグのduration判定
+  const video = getActiveVideoElement();
+  if (video && (video.duration === Infinity || isNaN(video.duration))) {
+    return true;
+  }
+
+  return false;
 }
 
 function getVideoDuration() {
@@ -864,6 +894,7 @@ document.addEventListener("keydown", (e) => {
 
 // YouTube SPA ページ遷移イベントを監視
 window.addEventListener("yt-navigate-finish", () => {
+  closePopup();
   setTimeout(injectVrcButton, 400);
 });
 
