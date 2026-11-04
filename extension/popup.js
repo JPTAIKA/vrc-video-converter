@@ -223,25 +223,48 @@ async function checkIsLiveStreamFromTab() {
         if (window.location.pathname.startsWith("/shorts/")) return false;
         if (window.location.pathname.startsWith("/live/")) return true;
 
-        // 1. プレイヤー内のライブバッジ確認
-        const liveBadge = document.querySelector("#movie_player .ytp-live-badge, .html5-video-player .ytp-live-badge, .ytp-live-badge");
-        if (liveBadge) return true;
+        const player = document.getElementById("movie_player") || document.querySelector(".html5-video-player");
 
-        // 2. プレイヤー本体およびタイム表示の ytp-live クラス
-        const liveEl = document.querySelector("#movie_player.ytp-live, .html5-video-player.ytp-live, .ytp-time-display.ytp-live, .ytp-live");
-        if (liveEl) return true;
+        // 1. 総再生時間（.ytp-time-duration）が存在し表示されていれば通常動画・過去のプレミア公開アーカイブ
+        if (player) {
+          const durationEl = player.querySelector(".ytp-time-duration");
+          if (durationEl && durationEl.textContent && durationEl.textContent.trim().length > 0) {
+            try {
+              const display = window.getComputedStyle(durationEl).display;
+              if (display !== "none") {
+                return false;
+              }
+            } catch (e) {
+              return false;
+            }
+          }
+        }
 
-        // 3. 再生時間インジケーターの「ライブ」表記
-        const timeDisplay = document.querySelector(".ytp-time-display");
-        if (timeDisplay && timeDisplay.textContent.includes("ライブ")) return true;
+        // 2. プレイヤー内のライブバッジ（.ytp-live-badge）が実際に画面上に表示（display !== "none"）されているか確認
+        if (player) {
+          const liveBadge = player.querySelector(".ytp-live-badge");
+          if (liveBadge) {
+            try {
+              const display = window.getComputedStyle(liveBadge).display;
+              if (display !== "none") {
+                return true;
+              }
+            } catch (e) {}
+          }
 
-        // 4. 視聴数表示の「人が視聴中」判定
-        const viewCountEl = document.querySelector("ytd-watch-metadata #view-count, #count.ytd-video-view-count-renderer, #info-text");
-        if (viewCountEl && (viewCountEl.textContent.includes("人が視聴中") || viewCountEl.textContent.toLowerCase().includes("watching"))) return true;
+          if (player.classList.contains("ytp-live")) {
+            return true;
+          }
+        }
 
-        // 5. ライブチャット枠の存在
-        const chatFrame = document.querySelector("ytd-live-chat-frame");
-        if (chatFrame) return true;
+        // 3. 視聴数表示の「人が視聴中」判定
+        const viewCountEl = document.querySelector("ytd-watch-metadata #view-count, #count.ytd-video-view-count-renderer");
+        if (viewCountEl) {
+          const text = viewCountEl.textContent || "";
+          if (text.includes("人が視聴中") || text.toLowerCase().includes("watching now")) {
+            return true;
+          }
+        }
 
         return false;
       }

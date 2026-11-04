@@ -90,40 +90,57 @@ function checkIsLiveStream() {
     return false;
   }
 
-  // 1. URLが明示的に /live/ の場合
+  // 1. URLが明示的に /live/ の場合は生配信
   if (window.location.pathname.startsWith("/live/")) {
     return true;
   }
 
-  // 2. プレイヤー内のライブバッジ (.ytp-live-badge) を最優先確認
-  // ※ 生配信中のYouTubeプレイヤーには、左下コントロールに必ず「● ライブ」ボタン（.ytp-live-badge）が存在します
-  const liveBadge = document.querySelector("#movie_player .ytp-live-badge, .html5-video-player .ytp-live-badge, .ytp-live-badge");
-  if (liveBadge) {
-    return true;
+  const player = document.getElementById("movie_player") || document.querySelector(".html5-video-player");
+
+  // 2. 動画の総再生時間（.ytp-time-duration）の確認
+  // ※ 通常動画および過去のプレミア公開アーカイブは必ず「0:41 / 4:21」のように総再生時間（.ytp-time-duration）が存在し、テキストが入っています。
+  // 一方、現在進行中の生配信やプレミア公開中では総再生時間は非表示（display: none）となり、テキストも空または存在しません。
+  if (player) {
+    const durationEl = player.querySelector(".ytp-time-duration");
+    if (durationEl && durationEl.textContent && durationEl.textContent.trim().length > 0) {
+      try {
+        const display = window.getComputedStyle(durationEl).display;
+        if (display !== "none") {
+          // 総再生時間が確実に表示されているので通常動画・過去のプレミア公開アーカイブ
+          return false;
+        }
+      } catch (e) {
+        return false;
+      }
+    }
   }
 
-  // 3. プレイヤー本体およびタイム表示の ytp-live クラス
-  const liveEl = document.querySelector("#movie_player.ytp-live, .html5-video-player.ytp-live, .ytp-time-display.ytp-live, .ytp-live");
-  if (liveEl) {
-    return true;
+  // 3. プレイヤー内のライブバッジ（.ytp-live-badge）が実際に画面上に表示（display !== "none"）されているか確認
+  // ※ 通常動画のプレイヤーにもテンプレートとして非表示（display: none）で要素が存在するため、必ずcomputedStyleを確認
+  if (player) {
+    const liveBadge = player.querySelector(".ytp-live-badge");
+    if (liveBadge) {
+      try {
+        const display = window.getComputedStyle(liveBadge).display;
+        if (display !== "none") {
+          return true;
+        }
+      } catch (e) {}
+    }
+
+    // プレイヤーが ytp-live クラスを持っている場合
+    if (player.classList.contains("ytp-live")) {
+      return true;
+    }
   }
 
-  // 4. 再生時間インジケーターの「ライブ」表記
-  const timeDisplay = document.querySelector(".ytp-time-display");
-  if (timeDisplay && timeDisplay.textContent.includes("ライブ")) {
-    return true;
-  }
-
-  // 5. 視聴数表示の「人が視聴中」判定 (通常の動画は「〇〇回視聴」)
-  const viewCountEl = document.querySelector("ytd-watch-metadata #view-count, #count.ytd-video-view-count-renderer, #info-text");
-  if (viewCountEl && (viewCountEl.textContent.includes("人が視聴中") || viewCountEl.textContent.toLowerCase().includes("watching"))) {
-    return true;
-  }
-
-  // 6. ライブチャット枠の存在 (生配信中のみ表示されるトップチャット)
-  const chatFrame = document.querySelector("ytd-live-chat-frame");
-  if (chatFrame) {
-    return true;
+  // 4. 視聴数表示に「人が視聴中」が含まれているか (生配信のみ表示。アーカイブや通常動画は「〇〇回視聴」)
+  const viewCountEl = document.querySelector("ytd-watch-metadata #view-count, #count.ytd-video-view-count-renderer");
+  if (viewCountEl) {
+    const text = viewCountEl.textContent || "";
+    if (text.includes("人が視聴中") || text.toLowerCase().includes("watching now")) {
+      return true;
+    }
   }
 
   return false;
