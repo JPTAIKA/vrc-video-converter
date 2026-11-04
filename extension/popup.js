@@ -208,7 +208,7 @@ function applyResolution(res) {
   if (elements.btnResLabel) elements.btnResLabel.textContent = btnLabels[res] || `${res}p`;
 }
 
-// ライブ配信判定
+// ライブ配信判定 (YouTube公式プレイヤーAPIおよび内部データから生配信中かどうかを正確に判定)
 async function checkIsLiveStreamFromTab() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -216,60 +216,43 @@ async function checkIsLiveStreamFromTab() {
 
     // Shortsはライブ配信ではない
     if (tab.url.includes("/shorts/")) return false;
+    if (tab.url.includes("/live/")) return true;
 
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
+      world: "MAIN",
       func: () => {
-        if (window.location.pathname.startsWith("/shorts/")) return false;
-        if (window.location.pathname.startsWith("/live/")) return true;
+        try {
+          if (window.location.pathname.startsWith("/shorts/")) return false;
+          if (window.location.pathname.startsWith("/live/")) return true;
 
-        const player = document.getElementById("movie_player") || document.querySelector(".html5-video-player");
-
-        // 1. 総再生時間（.ytp-time-duration）が存在し表示されていれば通常動画・過去のプレミア公開アーカイブ
-        if (player) {
-          const durationEl = player.querySelector(".ytp-time-duration");
-          if (durationEl && durationEl.textContent && durationEl.textContent.trim().length > 0) {
-            try {
-              const display = window.getComputedStyle(durationEl).display;
-              if (display !== "none") {
-                return false;
-              }
-            } catch (e) {
-              return false;
+          // 1. YouTube公式プレイヤーAPI
+          const player = document.getElementById("movie_player");
+          if (player && typeof player.getVideoData === "function") {
+            const data = player.getVideoData();
+            if (data && typeof data.isLive === "boolean") {
+              return data.isLive;
             }
           }
-        }
 
-        // 2. プレイヤー内のライブバッジ（.ytp-live-badge）が実際に画面上に表示（display !== "none"）されているか確認
-        if (player) {
-          const liveBadge = player.querySelector(".ytp-live-badge");
-          if (liveBadge) {
-            try {
-              const display = window.getComputedStyle(liveBadge).display;
-              if (display !== "none") {
-                return true;
-              }
-            } catch (e) {}
+          // 2. YouTube内部レスポンス
+          if (window.ytInitialPlayerResponse) {
+            const vd = window.ytInitialPlayerResponse.videoDetails;
+            if (vd) {
+              if (vd.isLive === true || vd.isLiveContent === true) return true;
+              if (vd.isLiveContent === false) return false;
+            }
+            const mf = window.ytInitialPlayerResponse.microformat?.playerMicroformatRenderer?.liveBroadcastDetails;
+            if (mf && typeof mf.isLiveNow === "boolean") {
+              return mf.isLiveNow;
+            }
           }
-
-          if (player.classList.contains("ytp-live")) {
-            return true;
-          }
-        }
-
-        // 3. 視聴数表示の「人が視聴中」判定
-        const viewCountEl = document.querySelector("ytd-watch-metadata #view-count, #count.ytd-video-view-count-renderer");
-        if (viewCountEl) {
-          const text = viewCountEl.textContent || "";
-          if (text.includes("人が視聴中") || text.toLowerCase().includes("watching now")) {
-            return true;
-          }
-        }
-
+        } catch (e) {}
         return false;
       }
     });
-    return results && results[0] && results[0].result === true;
+
+    return !!(results && results[0] && results[0].result === true);
   } catch (e) {
     return false;
   }

@@ -67,11 +67,11 @@ function injectVrcButton() {
 }
 
 // ポップアップの開閉
-function toggleInPlayerPopup() {
+async function toggleInPlayerPopup() {
   if (inPlayerPopup && inPlayerPopup.parentNode) {
     closePopup();
   } else {
-    openPopup();
+    await openPopup();
   }
 }
 
@@ -83,67 +83,27 @@ function getActiveVideoElement() {
   return document.querySelector("video");
 }
 
-// ライブ配信判定 (現在再生中の動画がリアルタイム生配信中かどうか)
+// ライブ配信判定 (YouTube公式プレイヤーAPIおよび内部データから生配信中かどうかを正確に判定)
 function checkIsLiveStream() {
-  // Shortsはライブ配信ではない
-  if (window.location.pathname.startsWith("/shorts/")) {
-    return false;
-  }
+  if (window.location.pathname.startsWith("/shorts/")) return Promise.resolve(false);
+  if (window.location.pathname.startsWith("/live/")) return Promise.resolve(true);
 
-  // 1. URLが明示的に /live/ の場合は生配信
-  if (window.location.pathname.startsWith("/live/")) {
-    return true;
-  }
-
-  const player = document.getElementById("movie_player") || document.querySelector(".html5-video-player");
-
-  // 2. 動画の総再生時間（.ytp-time-duration）の確認
-  // ※ 通常動画および過去のプレミア公開アーカイブは必ず「0:41 / 4:21」のように総再生時間（.ytp-time-duration）が存在し、テキストが入っています。
-  // 一方、現在進行中の生配信やプレミア公開中では総再生時間は非表示（display: none）となり、テキストも空または存在しません。
-  if (player) {
-    const durationEl = player.querySelector(".ytp-time-duration");
-    if (durationEl && durationEl.textContent && durationEl.textContent.trim().length > 0) {
-      try {
-        const display = window.getComputedStyle(durationEl).display;
-        if (display !== "none") {
-          // 総再生時間が確実に表示されているので通常動画・過去のプレミア公開アーカイブ
-          return false;
+  return new Promise((resolve) => {
+    try {
+      chrome.runtime.sendMessage({ action: "check_is_live" }, (response) => {
+        if (chrome.runtime.lastError || !response) {
+          // フォールバック: player DOM
+          const player = document.getElementById("movie_player");
+          const isLiveDom = !!(player && player.classList.contains("ytp-live"));
+          resolve(isLiveDom);
+        } else {
+          resolve(!!response.is_live);
         }
-      } catch (e) {
-        return false;
-      }
+      });
+    } catch (e) {
+      resolve(false);
     }
-  }
-
-  // 3. プレイヤー内のライブバッジ（.ytp-live-badge）が実際に画面上に表示（display !== "none"）されているか確認
-  // ※ 通常動画のプレイヤーにもテンプレートとして非表示（display: none）で要素が存在するため、必ずcomputedStyleを確認
-  if (player) {
-    const liveBadge = player.querySelector(".ytp-live-badge");
-    if (liveBadge) {
-      try {
-        const display = window.getComputedStyle(liveBadge).display;
-        if (display !== "none") {
-          return true;
-        }
-      } catch (e) {}
-    }
-
-    // プレイヤーが ytp-live クラスを持っている場合
-    if (player.classList.contains("ytp-live")) {
-      return true;
-    }
-  }
-
-  // 4. 視聴数表示に「人が視聴中」が含まれているか (生配信のみ表示。アーカイブや通常動画は「〇〇回視聴」)
-  const viewCountEl = document.querySelector("ytd-watch-metadata #view-count, #count.ytd-video-view-count-renderer");
-  if (viewCountEl) {
-    const text = viewCountEl.textContent || "";
-    if (text.includes("人が視聴中") || text.toLowerCase().includes("watching now")) {
-      return true;
-    }
-  }
-
-  return false;
+  });
 }
 
 function getVideoDuration() {
@@ -162,7 +122,7 @@ function getCurrentVideoSeconds() {
   return 0;
 }
 
-function openPopup() {
+async function openPopup() {
   const player = document.getElementById("movie_player") || document.querySelector(".html5-video-player");
   const btn = document.getElementById("vrc-player-button");
   if (!player) return;
@@ -183,7 +143,7 @@ function openPopup() {
 
   const resName = selectedResolution === "2160" ? "4K" : `${selectedResolution}p`;
   const meta = getCurrentVideoMeta();
-  const isLive = checkIsLiveStream();
+  const isLive = await checkIsLiveStream();
 
   inPlayerPopup.innerHTML = `
     <div class="vrc-popup-header">
@@ -679,7 +639,7 @@ async function handleConvertHq() {
   const dynamicArea = inPlayerPopup.querySelector("#vrc-dynamic-area");
   const btnConvert = inPlayerPopup.querySelector("#vrc-btn-convert");
 
-  if (checkIsLiveStream()) {
+  if (await checkIsLiveStream()) {
     dynamicArea.innerHTML = `
       <div class="vrc-error-box">
         🔴 現在ライブ配信中の動画は仕様上、変換および区間指定をご利用いただけません。配信終了後のアーカイブ動画にてご利用ください。
@@ -789,7 +749,7 @@ async function handleConvertHq() {
 async function handleCopyClean() {
   const dynamicArea = inPlayerPopup.querySelector("#vrc-dynamic-area");
 
-  if (checkIsLiveStream()) {
+  if (await checkIsLiveStream()) {
     dynamicArea.innerHTML = `
       <div class="vrc-error-box">
         🔴 現在ライブ配信中の動画は仕様上、変換および区間指定をご利用いただけません。配信終了後のアーカイブ動画にてご利用ください。
