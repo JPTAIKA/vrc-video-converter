@@ -75,26 +75,64 @@ function toggleInPlayerPopup() {
   }
 }
 
-// ライブ配信判定
+function getActiveVideoElement() {
+  const activeShort = document.querySelector("ytd-reel-video-renderer[is-active] video");
+  if (activeShort) return activeShort;
+  const playerVideo = document.querySelector("#movie_player video, .html5-video-player video");
+  if (playerVideo) return playerVideo;
+  return document.querySelector("video");
+}
+
+// ライブ配信判定 (現在再生中の動画がリアルタイム生配信中かどうか)
 function checkIsLiveStream() {
-  const video = document.querySelector("video");
-  if (video && (!isFinite(video.duration) || isNaN(video.duration))) {
+  // Shortsはライブ配信ではない
+  if (window.location.pathname.startsWith("/shorts/")) {
+    return false;
+  }
+
+  // URLが明示的に /live/ の場合
+  if (window.location.pathname.startsWith("/live/")) {
     return true;
   }
-  const liveBadge = document.querySelector(".ytp-live-badge, .ytp-live");
-  if (liveBadge && !liveBadge.classList.contains("ytp-live-badge-disabled") && !liveBadge.disabled) {
-    if (liveBadge.offsetParent !== null) return true;
+
+  // プレイヤー要素 (#movie_player) の状態を確認
+  const player = document.getElementById("movie_player") || document.querySelector(".html5-video-player");
+  if (player) {
+    // プレイヤーがライブモードの場合、ytp-live クラスが付与される
+    if (player.classList.contains("ytp-live")) {
+      const liveBadge = player.querySelector(".ytp-live-badge");
+      if (liveBadge && !liveBadge.classList.contains("ytp-live-badge-disabled") && !liveBadge.disabled) {
+        return true;
+      }
+    }
+
+    const video = player.querySelector("video");
+    // 実際に生放送中のHTML5 Videoは duration が Infinity になる (※NaNは除外)
+    if (video && video.duration === Infinity) {
+      return true;
+    }
   }
-  const metaLive = document.querySelector(".badge-style-type-live-now, ytd-badge-supported-renderer [aria-label*='ライブ'], ytd-badge-supported-renderer [aria-label*='LIVE']");
-  if (metaLive && metaLive.offsetParent !== null) return true;
+
+  // 動画詳細欄 (ytd-watch-metadata) の「ライブ配信中」バッジのみ確認 (※左サイドバーの登録チャンネル一覧は除外)
+  const watchMetadata = document.querySelector("ytd-watch-metadata");
+  if (watchMetadata) {
+    const liveNowBadge = watchMetadata.querySelector(".badge-style-type-live-now, [aria-label*='ライブ配信中'], [aria-label*='LIVE NOW']");
+    if (liveNowBadge && liveNowBadge.offsetParent !== null) {
+      return true;
+    }
+  }
+
+  // ytd-watch-flexy の is-live-playback 属性
   const watchFlexy = document.querySelector("ytd-watch-flexy");
-  if (watchFlexy && (watchFlexy.hasAttribute("is-live-playback") || watchFlexy.hasAttribute("is-live"))) return true;
-  if (window.location.pathname.startsWith("/live/")) return true;
+  if (watchFlexy && (watchFlexy.hasAttribute("is-live-playback") || watchFlexy.getAttribute("is-live") === "true")) {
+    return true;
+  }
+
   return false;
 }
 
 function getVideoDuration() {
-  const video = document.querySelector("video");
+  const video = getActiveVideoElement();
   if (video && isFinite(video.duration) && video.duration > 0) {
     return Math.floor(video.duration);
   }
@@ -102,7 +140,7 @@ function getVideoDuration() {
 }
 
 function getCurrentVideoSeconds() {
-  const video = document.querySelector("video");
+  const video = getActiveVideoElement();
   if (video && !isNaN(video.currentTime)) {
     return Math.floor(video.currentTime);
   }

@@ -212,21 +212,40 @@ function applyResolution(res) {
 async function checkIsLiveStreamFromTab() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab || !tab.id) return false;
+    if (!tab || !tab.id || !tab.url) return false;
+
+    // Shortsはライブ配信ではない
+    if (tab.url.includes("/shorts/")) return false;
+
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: () => {
-        const video = document.querySelector("video");
-        if (video && (!isFinite(video.duration) || isNaN(video.duration))) return true;
-        const liveBadge = document.querySelector(".ytp-live-badge, .ytp-live");
-        if (liveBadge && !liveBadge.classList.contains("ytp-live-badge-disabled") && !liveBadge.disabled) {
-          if (liveBadge.offsetParent !== null) return true;
-        }
-        const metaLive = document.querySelector(".badge-style-type-live-now, ytd-badge-supported-renderer [aria-label*='ライブ'], ytd-badge-supported-renderer [aria-label*='LIVE']");
-        if (metaLive && metaLive.offsetParent !== null) return true;
-        const watchFlexy = document.querySelector("ytd-watch-flexy");
-        if (watchFlexy && (watchFlexy.hasAttribute("is-live-playback") || watchFlexy.hasAttribute("is-live"))) return true;
+        if (window.location.pathname.startsWith("/shorts/")) return false;
         if (window.location.pathname.startsWith("/live/")) return true;
+
+        const player = document.getElementById("movie_player") || document.querySelector(".html5-video-player");
+        if (player) {
+          if (player.classList.contains("ytp-live")) {
+            const liveBadge = player.querySelector(".ytp-live-badge");
+            if (liveBadge && !liveBadge.classList.contains("ytp-live-badge-disabled") && !liveBadge.disabled) {
+              return true;
+            }
+          }
+          const video = player.querySelector("video");
+          if (video && video.duration === Infinity) return true;
+        }
+
+        const watchMetadata = document.querySelector("ytd-watch-metadata");
+        if (watchMetadata) {
+          const liveBadge = watchMetadata.querySelector(".badge-style-type-live-now, [aria-label*='ライブ配信中'], [aria-label*='LIVE NOW']");
+          if (liveBadge && liveBadge.offsetParent !== null) return true;
+        }
+
+        const watchFlexy = document.querySelector("ytd-watch-flexy");
+        if (watchFlexy && (watchFlexy.hasAttribute("is-live-playback") || watchFlexy.getAttribute("is-live") === "true")) {
+          return true;
+        }
+
         return false;
       }
     });
@@ -243,7 +262,8 @@ async function getVideoDurationFromTab() {
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: () => {
-        const video = document.querySelector("video");
+        const activeShort = document.querySelector("ytd-reel-video-renderer[is-active] video");
+        const video = activeShort || document.querySelector("#movie_player video, .html5-video-player video") || document.querySelector("video");
         return video && isFinite(video.duration) && video.duration > 0 ? Math.floor(video.duration) : 300;
       }
     });
@@ -260,7 +280,8 @@ async function getCurrentVideoSecondsFromTab() {
     const results = await chrome.scripting.executeScript({
       target: { tabId: tab.id },
       func: () => {
-        const video = document.querySelector("video");
+        const activeShort = document.querySelector("ytd-reel-video-renderer[is-active] video");
+        const video = activeShort || document.querySelector("#movie_player video, .html5-video-player video") || document.querySelector("video");
         return video && !isNaN(video.currentTime) ? Math.floor(video.currentTime) : 0;
       }
     });
