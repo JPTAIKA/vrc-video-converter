@@ -229,18 +229,25 @@ async def download_high_quality(
         loop = asyncio.get_running_loop()
 
         def _do_download():
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                # まず動画メタデータを確認
-                info = ydl.extract_info(canonical_url, download=False)
-                if not info:
+            # 1. ライブ配信チェック (format_spec評価エラーを防ぐため事前に素のメタデータを検査)
+            check_opts = {'quiet': True, 'no_warnings': True, 'noplaylist': True}
+            if os.path.exists(settings.COOKIES_FILE):
+                check_opts['cookiefile'] = settings.COOKIES_FILE
+            with yt_dlp.YoutubeDL(check_opts) as ydl_check:
+                meta = ydl_check.extract_info(canonical_url, download=False)
+                if not meta:
                     raise HTTPException(status_code=404, detail="動画情報を取得できませんでした。")
-
-                is_live = info.get('is_live') or info.get('live_status') in ['is_live', 'is_upcoming']
-                if is_live:
+                if meta.get('is_live') or meta.get('live_status') in ['is_live', 'is_upcoming']:
                     raise HTTPException(
                         status_code=400,
                         detail="現在配信中のライブ動画は変換できません。配信終了後のアーカイブ動画にてご利用ください。"
                     )
+
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                # 2. 指定解像度での動画情報取得と結合
+                info = ydl.extract_info(canonical_url, download=False)
+                if not info:
+                    raise HTTPException(status_code=404, detail="動画情報を取得できませんでした。")
 
                 duration = info.get('duration') or 0
                 if duration > settings.MAX_VIDEO_DURATION_SECONDS and start_sec is None:

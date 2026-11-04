@@ -90,41 +90,39 @@ function checkIsLiveStream() {
     return false;
   }
 
-  // URLが明示的に /live/ の場合
+  // 1. URLが明示的に /live/ の場合
   if (window.location.pathname.startsWith("/live/")) {
     return true;
   }
 
-  // プレイヤー要素 (#movie_player) の状態を確認
-  const player = document.getElementById("movie_player") || document.querySelector(".html5-video-player");
-  if (player) {
-    // プレイヤーがライブモードの場合、ytp-live クラスが付与される
-    if (player.classList.contains("ytp-live")) {
-      const liveBadge = player.querySelector(".ytp-live-badge");
-      if (liveBadge && !liveBadge.classList.contains("ytp-live-badge-disabled") && !liveBadge.disabled) {
-        return true;
-      }
-    }
-
-    const video = player.querySelector("video");
-    // 実際に生放送中のHTML5 Videoは duration が Infinity になる (※NaNは除外)
-    if (video && video.duration === Infinity) {
-      return true;
-    }
+  // 2. プレイヤー内のライブバッジ (.ytp-live-badge) を最優先確認
+  // ※ 生配信中のYouTubeプレイヤーには、左下コントロールに必ず「● ライブ」ボタン（.ytp-live-badge）が存在します
+  const liveBadge = document.querySelector("#movie_player .ytp-live-badge, .html5-video-player .ytp-live-badge, .ytp-live-badge");
+  if (liveBadge) {
+    return true;
   }
 
-  // 動画詳細欄 (ytd-watch-metadata) の「ライブ配信中」バッジのみ確認 (※左サイドバーの登録チャンネル一覧は除外)
-  const watchMetadata = document.querySelector("ytd-watch-metadata");
-  if (watchMetadata) {
-    const liveNowBadge = watchMetadata.querySelector(".badge-style-type-live-now, [aria-label*='ライブ配信中'], [aria-label*='LIVE NOW']");
-    if (liveNowBadge && liveNowBadge.offsetParent !== null) {
-      return true;
-    }
+  // 3. プレイヤー本体およびタイム表示の ytp-live クラス
+  const liveEl = document.querySelector("#movie_player.ytp-live, .html5-video-player.ytp-live, .ytp-time-display.ytp-live, .ytp-live");
+  if (liveEl) {
+    return true;
   }
 
-  // ytd-watch-flexy の is-live-playback 属性
-  const watchFlexy = document.querySelector("ytd-watch-flexy");
-  if (watchFlexy && (watchFlexy.hasAttribute("is-live-playback") || watchFlexy.getAttribute("is-live") === "true")) {
+  // 4. 再生時間インジケーターの「ライブ」表記
+  const timeDisplay = document.querySelector(".ytp-time-display");
+  if (timeDisplay && timeDisplay.textContent.includes("ライブ")) {
+    return true;
+  }
+
+  // 5. 視聴数表示の「人が視聴中」判定 (通常の動画は「〇〇回視聴」)
+  const viewCountEl = document.querySelector("ytd-watch-metadata #view-count, #count.ytd-video-view-count-renderer, #info-text");
+  if (viewCountEl && (viewCountEl.textContent.includes("人が視聴中") || viewCountEl.textContent.toLowerCase().includes("watching"))) {
+    return true;
+  }
+
+  // 6. ライブチャット枠の存在 (生配信中のみ表示されるトップチャット)
+  const chatFrame = document.querySelector("ytd-live-chat-frame");
+  if (chatFrame) {
     return true;
   }
 
@@ -663,6 +661,16 @@ function updatePillsUI() {
 async function handleConvertHq() {
   const dynamicArea = inPlayerPopup.querySelector("#vrc-dynamic-area");
   const btnConvert = inPlayerPopup.querySelector("#vrc-btn-convert");
+
+  if (checkIsLiveStream()) {
+    dynamicArea.innerHTML = `
+      <div class="vrc-error-box">
+        🔴 現在ライブ配信中の動画は仕様上、変換および区間指定をご利用いただけません。配信終了後のアーカイブ動画にてご利用ください。
+      </div>
+    `;
+    return;
+  }
+
   const resName = selectedResolution === "2160" ? "4K" : `${selectedResolution}p`;
   const clip = getClipTimes();
 
@@ -763,6 +771,16 @@ async function handleConvertHq() {
 // 通常リンクコピー処理
 async function handleCopyClean() {
   const dynamicArea = inPlayerPopup.querySelector("#vrc-dynamic-area");
+
+  if (checkIsLiveStream()) {
+    dynamicArea.innerHTML = `
+      <div class="vrc-error-box">
+        🔴 現在ライブ配信中の動画は仕様上、変換および区間指定をご利用いただけません。配信終了後のアーカイブ動画にてご利用ください。
+      </div>
+    `;
+    return;
+  }
+
   const videoId = extractVideoId(window.location.href);
 
   if (!videoId) {
